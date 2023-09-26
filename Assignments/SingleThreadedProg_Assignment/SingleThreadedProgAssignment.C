@@ -4,6 +4,13 @@
 // SWE 660 - Fall 2023
 // Project Group 6
 // Tue/Thu Batch
+// Group Members:
+//	Poorvi Lakkadi (G01389351)
+//	Prabath Reddy Sagili Venkata (G01393364)
+//	Pranitha Kakumanu (G01379534)
+//	Sai Hruthik Karumanchi (G01352466)
+//	Sai Sujith Reddy Ravula (G01409395)
+//	Sri Harish Jayaram (G01393332)
 //
 // Copyright 2023
 //
@@ -30,7 +37,7 @@
 #define OFF 0
 
 #define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
-#define TWO_MIN_DELAY 10 //10 second delay set now for testing, need to change it to 2 minutes
+#define TWO_MIN_DELAY 120 //2 minutes delay
 
 int initialize_gpios(){
     int f=0;
@@ -144,7 +151,7 @@ int main (void)
 
     printf("GPIO initialization successful!\n");
 
-    while(true){
+    while(1){
 
         letSide1Go();
         printf("Side1 GO\n");
