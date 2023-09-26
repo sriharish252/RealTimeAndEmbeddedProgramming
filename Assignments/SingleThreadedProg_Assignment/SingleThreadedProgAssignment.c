@@ -124,22 +124,30 @@ void triggerYellows() {
 
 void letSide1Go() {
     writeGPIO(RED2val,ON);
+    printf("Red2 ON\n");
     writeGPIO(GREEN1val,ON);
+    printf("Green1 ON\n");
 }
 
 void letSide1Wait() {
     writeGPIO(RED2val,OFF);
+    printf("Red2 OFF\n");
     writeGPIO(GREEN1val,OFF);
+    printf("Green1 OFF\n");
 }
 
 void letSide2Go() {
     writeGPIO(RED1val,ON);
+    printf("Red1 ON\n");
     writeGPIO(GREEN2val,ON);
+    printf("Green2 ON\n");
 }
 
 void letSide2Wait() {
     writeGPIO(RED1val,OFF);
+    printf("Red1 OFF\n");
     writeGPIO(GREEN2val,OFF);
+    printf("Green2 OFF\n");
 }
 
 int main (void)
@@ -152,23 +160,19 @@ int main (void)
     printf("GPIO initialization successful!\n");
 
     while(1){
-
+        // Setting Side1 as GO
         letSide1Go();
-        printf("Side1 GO\n");
         sleep(TWO_MIN_DELAY);
         letSide1Wait();
-        printf("Side1 STOP\n");
 
         triggerYellows();
 
+        // Setting Side2 as GO
         letSide2Go();
-        printf("Side2 GO\n");
         sleep(TWO_MIN_DELAY);
         letSide2Wait();
-        printf("Side2 STOP\n");
 
         triggerYellows();
-
     }
 
     return 0;
