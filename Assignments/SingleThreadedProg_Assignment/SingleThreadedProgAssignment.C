@@ -19,18 +19,18 @@
 #define YELLOW1val "/sys/class/gpio/gpio68/value"
 #define GREEN1dir "/sys/class/gpio/gpio44/direction" //Green light connected to GPIO44
 #define GREEN1val "/sys/class/gpio/gpio44/value"
-#define RED2dir "/sys/class/gpio/gpio26/direction" //Red light connected to GPIO67
+#define RED2dir "/sys/class/gpio/gpio26/direction" //Red light connected to GPIO26
 #define RED2val "/sys/class/gpio/gpio26/value"
-#define YELLOW2dir "/sys/class/gpio/gpio46/direction" //Yellow light connected to GPIO68
+#define YELLOW2dir "/sys/class/gpio/gpio46/direction" //Yellow light connected to GPIO46
 #define YELLOW2val "/sys/class/gpio/gpio46/value"
-#define GREEN2dir "/sys/class/gpio/gpio65/direction" //Green light connected to GPIO44
+#define GREEN2dir "/sys/class/gpio/gpio65/direction" //Green light connected to GPIO65
 #define GREEN2val "/sys/class/gpio/gpio65/value"
 
 #define ON 1
 #define OFF 0
 
-#define FIVE_SEC_DELAY 500000 //Half second delay in microseconds set now for testing, need to change it to 2 minutes
-#define TWO_MIN_DELAY 2000000 //2 second delay in microseconds set now for testing, need to change it to 2 minutes
+#define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
+#define TWO_MIN_DELAY 10 //10 second delay set now for testing, need to change it to 2 minutes
 
 int initialize_gpios(){
     int f=0;
@@ -97,6 +97,44 @@ int writeGPIO(char* light, int value){
     return 1;
 }
 
+void triggerYellowsON() {
+    writeGPIO(YELLOW1val,ON);
+    writeGPIO(YELLOW2val,ON);
+}
+
+void triggerYellowsOFF() {
+    writeGPIO(YELLOW1val,OFF);
+    writeGPIO(YELLOW2val,OFF);
+}
+
+void triggerYellows() {
+    triggerYellowsON();
+    printf("Yellows ON\n");
+    sleep(FIVE_SEC_DELAY);
+    triggerYellowsOFF();
+    printf("Yellows OFF\n");
+}
+
+void letSide1Go() {
+    writeGPIO(RED2val,ON);
+    writeGPIO(GREEN1val,ON);
+}
+
+void letSide1Wait() {
+    writeGPIO(RED2val,OFF);
+    writeGPIO(GREEN1val,OFF);
+}
+
+void letSide2Go() {
+    writeGPIO(RED1val,ON);
+    writeGPIO(GREEN2val,ON);
+}
+
+void letSide2Wait() {
+    writeGPIO(RED1val,OFF);
+    writeGPIO(GREEN2val,OFF);
+}
+
 int main (void)
 {
     if (initialize_gpios() == -1){
@@ -107,30 +145,23 @@ int main (void)
     printf("GPIO initialization successful!\n");
 
     while(true){
-        writeGPIO(RED1val,ON);
-        writeGPIO(GREEN2val,ON);
-        printf("Green2 ON\n");
-        usleep(TWO_MIN_DELAY);
-        writeGPIO(RED1val,OFF);
-        writeGPIO(GREEN2val,OFF);
-        writeGPIO(YELLOW1val,ON);
-        writeGPIO(YELLOW2val,ON);
-        printf("Yellows ON\n");
-        usleep(FIVE_SEC_DELAY);
-        writeGPIO(YELLOW1val,OFF);
-        writeGPIO(YELLOW2val,OFF);
-        writeGPIO(GREEN1val,ON);
-        writeGPIO(RED2val,ON);
-        printf("Green1 ON\n");
-        usleep(TWO_MIN_DELAY);
-        writeGPIO(GREEN1val,OFF);
-        writeGPIO(RED2val,OFF);
-        writeGPIO(YELLOW1val,ON);
-        writeGPIO(YELLOW2val,ON);
-        printf("Yellows ON\n");
-        usleep(FIVE_SEC_DELAY);
-        writeGPIO(YELLOW1val,OFF);
-        writeGPIO(YELLOW2val,OFF);
+
+        letSide1Go();
+        printf("Side1 GO\n");
+        sleep(TWO_MIN_DELAY);
+        letSide1Wait();
+        printf("Side1 STOP\n");
+
+        triggerYellows();
+
+        letSide2Go();
+        printf("Side2 GO\n");
+        sleep(TWO_MIN_DELAY);
+        letSide2Wait();
+        printf("Side2 STOP\n");
+
+        triggerYellows();
+
     }
 
     return 0;
