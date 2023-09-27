@@ -104,7 +104,7 @@ int writeGPIO(char* light, int value){
     return 1;
 }
 
-int setLightColor_Signal(char signalSet[][GPIO_PATH_LEN],char light) {
+void setSignalLightColor(char signalSet[][GPIO_PATH_LEN],char light) {
     switch (light) {
         case 'R':
             writeGPIO(signalSet[0],ON);
@@ -123,29 +123,27 @@ int setLightColor_Signal(char signalSet[][GPIO_PATH_LEN],char light) {
             break;
         default:
             perror("Invalid Color selected!\n");
-            return -1;
     }
-    return 1;
 }
 
 void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]) {
-    setLightColor_Signal(signalSet1, 'G');
+    setSignalLightColor(signalSet1, 'G');
     printf("Green1 ON\n");
-    setLightColor_Signal(signalSet2, 'R');
+    setSignalLightColor(signalSet2, 'R');
     printf("Red2 ON\n");
     sleep(TWO_MIN_DELAY);
 
-    setLightColor_Signal(signalSet1, 'Y');
+    setSignalLightColor(signalSet1, 'Y');
     printf("Yellow1 ON\n");
     sleep(FIVE_SEC_DELAY);
 
-    setLightColor_Signal(signalSet1, 'R');
+    setSignalLightColor(signalSet1, 'R');
     printf("Red1 ON\n");
-    setLightColor_Signal(signalSet2, 'G');
+    setSignalLightColor(signalSet2, 'G');
     printf("Green2 ON\n");
     sleep(TWO_MIN_DELAY);
 
-    setLightColor_Signal(signalSet2, 'Y');
+    setSignalLightColor(signalSet2, 'Y');
     printf("Yellow2 ON\n");
     sleep(FIVE_SEC_DELAY);
 }
