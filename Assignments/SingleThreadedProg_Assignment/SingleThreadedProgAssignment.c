@@ -49,13 +49,13 @@ void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet
 int main()
 {
     if (initialize_gpios() == -1){
-        printf("Error with GPIO initialization \n");
+        (void)printf("Error with GPIO initialization \n");
         return -1;
     }
     char signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
     char signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
 
-    printf("GPIO initialization successful!\n");
+    (void)printf("GPIO initialization successful!\n");
 
     while(1){
         simulateTwoWayIntersection(signalSet1, signalSet2);
@@ -70,48 +70,48 @@ int initialize_gpios(){
         (void)perror("Error opening Red Direction");
         return -1;
     }
-    write(f,"out",3);
-    close(f);
+    (void)write(f,"out",3);
+    (void)close(f);
 
     f=open(YELLOW1dir, O_RDWR);
     if (f < 0){
-        perror("Error opening Yellow Direction");
+        (void)perror("Error opening Yellow Direction");
         return -1;
     }
-    write(f,"out",3);
-    close(f);
+    (void)write(f,"out",3);
+    (void)close(f);
 
     f=open(GREEN1dir, O_RDWR);
     if (f < 0){
-        perror("Error opening Green Direction");
+        (void)perror("Error opening Green Direction");
         return -1;
     }
-    write(f,"out",3);
-    close(f);
+    (void)write(f,"out",3);
+    (void)close(f);
 
     f=open(RED2dir, O_RDWR);
     if (f < 0){
-        perror("Error opening Red Direction");
+        (void)perror("Error opening Red Direction");
         return -1;
     }
-    write(f,"out",3);
-    close(f);
+    (void)write(f,"out",3);
+    (void)close(f);
 
     f=open(YELLOW2dir, O_RDWR);
     if (f < 0){
-        perror("Error opening Yellow Direction");
+        (void)perror("Error opening Yellow Direction");
         return -1;
     }
-    write(f,"out",3);
-    close(f);
+    (void)write(f,"out",3);
+    (void)close(f);
 
     f=open(GREEN2dir, O_RDWR);
     if (f < 0){
-        perror("Error opening Green Direction");
+        (void)perror("Error opening Green Direction");
         return -1;
     }
-    write(f,"out",3);
-    close(f);
+    (void)write(f,"out",3);
+    (void)close(f);
 
     return 0;
 }
@@ -120,32 +120,32 @@ int writeGPIO(char* light, int value){
     int f=0;
     f=open(light,O_WRONLY);
 
-    value == ON ? write(f,"1",1) : write(f,"0",1);
+    value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
 
-    close(f);
+    (void)close(f);
     return 1;
 }
 
 void printSignalSetStatus(char signalSetNum,char light) {
-    printf("SignalSideNumber %c : ",signalSetNum);
+    (void)printf("SignalSideNumber %c : ",signalSetNum);
     switch (light) {
         case 'R':
-            printf("Red ON, ");
-            printf("Yellow OFF, ");
-            printf("Green OFF \n");
+            (void)printf("Red ON, ");
+            (void)printf("Yellow OFF, ");
+            (void)printf("Green OFF \n");
             break;
         case 'Y':
-            printf("Red OFF, ");
-            printf("Yellow ON, ");
-            printf("Green OFF \n");
+            (void)printf("Red OFF, ");
+            (void)printf("Yellow ON, ");
+            (void)printf("Green OFF \n");
             break;
         case 'G':
-            printf("Red OFF, ");
-            printf("Yellow OFF, ");
-            printf("Green ON \n");
+            (void)printf("Red OFF, ");
+            (void)printf("Yellow OFF, ");
+            (void)printf("Green ON \n");
             break;
         default:
-            perror("Invalid Color selected!\n");
+            (void)perror("Invalid Color selected!\n");
     }
 }
 
@@ -167,7 +167,7 @@ void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, cha
             writeGPIO(signalSet[2],ON);
             break;
         default:
-            perror("Invalid Color selected!\n");
+            (void)perror("Invalid Color selected!\n");
             return;
     }
     printSignalSetStatus(signalSetNum, light);
@@ -175,25 +175,25 @@ void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, cha
 
 
 void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]) {
-    printf("Triggering Side1 GO\n");
+    (void)printf("Triggering Side1 GO\n");
     setSignalLightColor(signalSet1, '1', 'G');
     setSignalLightColor(signalSet2, '2', 'R');
     sleep(TWO_MIN_DELAY);
-    printf("--------------------\n");
+    (void)printf("--------------------\n");
 
-    printf("Transitioning Side1 to Yellow\n");
+    (void)printf("Transitioning Side1 to Yellow\n");
     setSignalLightColor(signalSet1, '1', 'Y');
     sleep(FIVE_SEC_DELAY);
-    printf("--------------------\n");
+    (void)printf("--------------------\n");
 
-    printf("Triggering Side2 GO\n");
+    (void)printf("Triggering Side2 GO\n");
     setSignalLightColor(signalSet1, '1', 'R');
     setSignalLightColor(signalSet2, '2', 'G');
     sleep(TWO_MIN_DELAY);
-    printf("--------------------\n");
+    (void)printf("--------------------\n");
 
-    printf("Transitioning Side2 to Yellow\n");
+    (void)printf("Transitioning Side2 to Yellow\n");
     setSignalLightColor(signalSet2, '2', 'Y');
     sleep(FIVE_SEC_DELAY);
-    printf("--------------------\n");
+    (void)printf("--------------------\n");
 }
