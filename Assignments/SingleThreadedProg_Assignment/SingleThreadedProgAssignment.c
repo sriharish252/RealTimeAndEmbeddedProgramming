@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
 
 #define RED1dir "/sys/class/gpio/gpio67/direction" //Red light connected to GPIO67
 #define RED1val "/sys/class/gpio/gpio67/value"
@@ -37,11 +36,13 @@
 #define OFF 0
 
 #define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
-#define TWO_MIN_DELAY 120 //2 minutes delay
+#define TWO_MIN_DELAY 120 //2 minutes delay, for holding the red/green light pattern
+
+#define GPIO_PATH_LEN 40
 
 int initialize_gpios(){
     int f=0;
-
+    
     f=open(RED1dir, O_RDWR);
     if (f < 0){
         perror("Error opening Red Direction");
@@ -94,7 +95,6 @@ int initialize_gpios(){
 }
 
 int writeGPIO(char* light, int value){
-
     int f=0;
     f=open(light,O_WRONLY);
 
@@ -104,76 +104,64 @@ int writeGPIO(char* light, int value){
     return 1;
 }
 
-void triggerYellowsON() {
-    writeGPIO(YELLOW1val,ON);
-    writeGPIO(YELLOW2val,ON);
+int setLightColor_Signal(char signalSet[][GPIO_PATH_LEN],char light) {
+    switch (light) {
+        case 'R':
+            writeGPIO(signalSet[0],ON);
+            writeGPIO(signalSet[1],OFF);
+            writeGPIO(signalSet[2],OFF);
+            break;
+        case 'Y':
+            writeGPIO(signalSet[0],OFF);
+            writeGPIO(signalSet[1],ON);
+            writeGPIO(signalSet[2],OFF);
+            break;
+        case 'G':
+            writeGPIO(signalSet[0],OFF);
+            writeGPIO(signalSet[1],OFF);
+            writeGPIO(signalSet[2],ON);
+            break;
+        default:
+            perror("Invalid Color selected!\n");
+            return -1;
+    }
+    return 1;
 }
 
-void triggerYellowsOFF() {
-    writeGPIO(YELLOW1val,OFF);
-    writeGPIO(YELLOW2val,OFF);
-}
-
-void triggerYellows() {
-    triggerYellowsON();
-    printf("Yellows ON\n");
-    sleep(FIVE_SEC_DELAY);
-    triggerYellowsOFF();
-    printf("Yellows OFF\n");
-}
-
-void letSide1Go() {
-    writeGPIO(RED2val,ON);
-    printf("Red2 ON\n");
-    writeGPIO(GREEN1val,ON);
+void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]) {
+    setLightColor_Signal(signalSet1, 'G');
     printf("Green1 ON\n");
-}
+    setLightColor_Signal(signalSet2, 'R');
+    printf("Red2 ON\n");
+    sleep(TWO_MIN_DELAY);
 
-void letSide1Wait() {
-    writeGPIO(RED2val,OFF);
-    printf("Red2 OFF\n");
-    writeGPIO(GREEN1val,OFF);
-    printf("Green1 OFF\n");
-}
+    setLightColor_Signal(signalSet1, 'Y');
+    printf("Yellow1 ON\n");
+    sleep(FIVE_SEC_DELAY);
 
-void letSide2Go() {
-    writeGPIO(RED1val,ON);
+    setLightColor_Signal(signalSet1, 'R');
     printf("Red1 ON\n");
-    writeGPIO(GREEN2val,ON);
+    setLightColor_Signal(signalSet2, 'G');
     printf("Green2 ON\n");
+    sleep(TWO_MIN_DELAY);
+
+    setLightColor_Signal(signalSet2, 'Y');
+    printf("Yellow2 ON\n");
+    sleep(FIVE_SEC_DELAY);
 }
 
-void letSide2Wait() {
-    writeGPIO(RED1val,OFF);
-    printf("Red1 OFF\n");
-    writeGPIO(GREEN2val,OFF);
-    printf("Green2 OFF\n");
-}
-
-int main (void)
+int main()
 {
     if (initialize_gpios() == -1){
         printf("Error with GPIO initialization \n");
         return -1;
     }
+    char signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
+    char signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
 
     printf("GPIO initialization successful!\n");
 
     while(1){
-        // Setting Side1 as GO
-        letSide1Go();
-        sleep(TWO_MIN_DELAY);
-        letSide1Wait();
-
-        triggerYellows();
-
-        // Setting Side2 as GO
-        letSide2Go();
-        sleep(TWO_MIN_DELAY);
-        letSide2Wait();
-
-        triggerYellows();
+        simulateTwoWayIntersection(signalSet1, signalSet2);
     }
-
-    return 0;
 }
