@@ -40,12 +40,34 @@
 
 #define GPIO_PATH_LEN 40
 
+int initialize_gpios();
+int writeGPIO(char* light, int value);
+void printSignalSetStatus(char signalSetNum,char light);
+void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, char light);
+void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]);
+
+int main()
+{
+    if (initialize_gpios() == -1){
+        printf("Error with GPIO initialization \n");
+        return -1;
+    }
+    char signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
+    char signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
+
+    printf("GPIO initialization successful!\n");
+
+    while(1){
+        simulateTwoWayIntersection(signalSet1, signalSet2);
+    }
+}
+
 int initialize_gpios(){
     int f=0;
     
     f=open(RED1dir, O_RDWR);
     if (f < 0){
-        perror("Error opening Red Direction");
+        (void)perror("Error opening Red Direction");
         return -1;
     }
     write(f,"out",3);
@@ -174,20 +196,4 @@ void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet
     setSignalLightColor(signalSet2, '2', 'Y');
     sleep(FIVE_SEC_DELAY);
     printf("--------------------\n");
-}
-
-int main()
-{
-    if (initialize_gpios() == -1){
-        printf("Error with GPIO initialization \n");
-        return -1;
-    }
-    char signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
-    char signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
-
-    printf("GPIO initialization successful!\n");
-
-    while(1){
-        simulateTwoWayIntersection(signalSet1, signalSet2);
-    }
 }
