@@ -104,7 +104,30 @@ int writeGPIO(char* light, int value){
     return 1;
 }
 
-void setSignalLightColor(char signalSet[][GPIO_PATH_LEN],char light) {
+void printSignalSetStatus(char signalSetNum,char light) {
+    printf("SignalSideNumber %c : ",signalSetNum);
+    switch (light) {
+        case 'R':
+            printf("Red ON, ");
+            printf("Yellow OFF, ");
+            printf("Green OFF \n");
+            break;
+        case 'Y':
+            printf("Red OFF, ");
+            printf("Yellow ON, ");
+            printf("Green OFF \n");
+            break;
+        case 'G':
+            printf("Red OFF, ");
+            printf("Yellow OFF, ");
+            printf("Green ON \n");
+            break;
+        default:
+            perror("Invalid Color selected!\n");
+    }
+}
+
+void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, char light) {
     switch (light) {
         case 'R':
             writeGPIO(signalSet[0],ON);
@@ -123,29 +146,34 @@ void setSignalLightColor(char signalSet[][GPIO_PATH_LEN],char light) {
             break;
         default:
             perror("Invalid Color selected!\n");
+            return;
     }
+    printSignalSetStatus(signalSetNum, light);
 }
 
+
 void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]) {
-    setSignalLightColor(signalSet1, 'G');
-    printf("Green1 ON\n");
-    setSignalLightColor(signalSet2, 'R');
-    printf("Red2 ON\n");
+    printf("Triggering Side1 GO\n");
+    setSignalLightColor(signalSet1, '1', 'G');
+    setSignalLightColor(signalSet2, '2', 'R');
     sleep(TWO_MIN_DELAY);
+    printf("--------------------\n");
 
-    setSignalLightColor(signalSet1, 'Y');
-    printf("Yellow1 ON\n");
+    printf("Transitioning Side1 to Yellow\n");
+    setSignalLightColor(signalSet1, '1', 'Y');
     sleep(FIVE_SEC_DELAY);
+    printf("--------------------\n");
 
-    setSignalLightColor(signalSet1, 'R');
-    printf("Red1 ON\n");
-    setSignalLightColor(signalSet2, 'G');
-    printf("Green2 ON\n");
+    printf("Triggering Side2 GO\n");
+    setSignalLightColor(signalSet1, '1', 'R');
+    setSignalLightColor(signalSet2, '2', 'G');
     sleep(TWO_MIN_DELAY);
+    printf("--------------------\n");
 
-    setSignalLightColor(signalSet2, 'Y');
-    printf("Yellow2 ON\n");
+    printf("Transitioning Side2 to Yellow\n");
+    setSignalLightColor(signalSet2, '2', 'Y');
     sleep(FIVE_SEC_DELAY);
+    printf("--------------------\n");
 }
 
 int main()
