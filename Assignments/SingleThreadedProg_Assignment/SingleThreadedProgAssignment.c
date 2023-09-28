@@ -157,12 +157,14 @@ void printSignalSetStatus(int8_t signalSetNum,int8_t light) {
             break;
         default:
             (void)perror("Invalid Color selected!\n");  // Throws an error if a color other than R,Y or G is passed
+            break;
     }
 }
 
 // To set a signalSet's light color
 // Pass the path of the SignalSet value, SignalSet Number and the first character of the light color that must be ON
 void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light) {
+    int8_t invalidLightError = 0;
     switch (light) {        // Since there can only be 1 light ON at a time in a signal set, there are three cases
         case 'R':
             writeGPIO(signalSet[0],ON);
@@ -181,9 +183,12 @@ void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t
             break;
         default:
             (void)perror("Invalid Color selected!\n");  // Throws an error if a color other than R,Y or G is passed
-            return;
+            invalidLightError = 1;
+            break;
     }
-    printSignalSetStatus(signalSetNum, light);  // Prints the ON and OFF lights of this SignalSet, for debugging
+    if(!invalidLightError) {
+        printSignalSetStatus(signalSetNum, light);  // Prints the ON and OFF lights of this SignalSet, for debugging
+    }
 }
 
 // Simulates a Two-way intersection having 3 traffic lights on each side
