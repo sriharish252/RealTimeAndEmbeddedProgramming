@@ -44,13 +44,14 @@
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
+#define NUM_OF_SIGNALS 3
 
 // Function declarations
 int16_t initialize_gpios();
-void writeGPIO(char* light, int16_t value);
+void writeGPIO(int8_t* light, int16_t value);
 void printSignalSetStatus(int8_t signalSetNum,int8_t light);
-void setSignalLightColor(char signalSet[3][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
-void simulateTwoWayIntersection(char signalSet1[3][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]);
+void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
+void simulateTwoWayIntersection(int8_t signalSet1[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSet2[NUM_OF_SIGNALS][GPIO_PATH_LEN]);
 
 int main(void)
 {
@@ -62,8 +63,8 @@ int main(void)
     (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
 
     // Group each side's signals of Red, Yellow and Green into an array for better clarity and easy access
-    char signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
-    char signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
+    int8_t signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
+    int8_t signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
 
     while(1){   // Infinite loop for continuous running of the traffic light program
         simulateTwoWayIntersection(signalSet1, signalSet2);
@@ -76,7 +77,7 @@ int16_t initialize_gpios(){
 
     // Open the RED1 LED GPIO path in ReadWrite mode
     f=open(RED1dir, O_RDWR);
-    if (f < 0){     // If opening file fails, we get -1 as the return value, leading to us throwing an error upstream
+    if (f <= ERROR_CODE){     // If opening file fails, we get -1 as the return value, leading to us throwing an error upstream
         (void)perror("Error opening Red Direction");
         return ERROR_CODE;
     }
@@ -128,7 +129,7 @@ int16_t initialize_gpios(){
 }
 
 // For writing an output into the GPIO port
-void writeGPIO(char* light, int16_t value){
+void writeGPIO(int8_t* light, int16_t value){
     int16_t f=0;
     f=open(light,O_WRONLY); // Open LED value path in Write Only mode
     value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
@@ -161,7 +162,7 @@ void printSignalSetStatus(int8_t signalSetNum,int8_t light) {
 
 // To set a signalSet's light color
 // Pass the path of the SignalSet value, SignalSet Number and the first character of the light color that must be ON
-void setSignalLightColor(char signalSet[3][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light) {
+void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light) {
     switch (light) {        // Since there can only be 1 light ON at a time in a signal set, there are three cases
         case 'R':
             writeGPIO(signalSet[0],ON);
@@ -186,7 +187,7 @@ void setSignalLightColor(char signalSet[3][GPIO_PATH_LEN], int8_t signalSetNum, 
 }
 
 // Simulates a Two-way intersection having 3 traffic lights on each side
-void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]) {
+void simulateTwoWayIntersection(int8_t signalSet1[][GPIO_PATH_LEN], int8_t signalSet2[][GPIO_PATH_LEN]) {
 
     // Letting Side 1 go by setting Green1 light ON and the opposite side's Red2 light ON
     (void)printf("Triggering Side1 GO\n");
