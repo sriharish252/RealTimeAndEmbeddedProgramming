@@ -18,7 +18,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdint.h>
 
+// GPIO paths for GPIO port access
 #define RED1dir "/sys/class/gpio/gpio67/direction" //Red light connected to GPIO67
 #define RED1val "/sys/class/gpio/gpio67/value"
 #define YELLOW1dir "/sys/class/gpio/gpio68/direction" //Yellow light connected to GPIO68
@@ -32,51 +34,60 @@
 #define GREEN2dir "/sys/class/gpio/gpio65/direction" //Green light connected to GPIO65
 #define GREEN2val "/sys/class/gpio/gpio65/value"
 
+// ON and OFF values for controlling LED light states
 #define ON 1
 #define OFF 0
 
+// Time delays for delaying the next signal
 #define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
 #define TWO_MIN_DELAY 120 //2 minutes delay, for holding the red/green light pattern
 
-#define GPIO_PATH_LEN 40
+#define GPIO_PATH_LEN 40 // GPIO port access path length
+#define ERROR_CODE (-1) // Set the default error code
 
-int initialize_gpios();
-int writeGPIO(char* light, int value);
-void printSignalSetStatus(char signalSetNum,char light);
-void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, char light);
-void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]);
+// Function declarations
+int16_t initialize_gpios();
+void writeGPIO(char* light, int16_t value);
+void printSignalSetStatus(int8_t signalSetNum,int8_t light);
+void setSignalLightColor(char signalSet[3][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
+void simulateTwoWayIntersection(char signalSet1[3][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]);
 
-int main()
+int main(void)
 {
-    if (initialize_gpios() == -1){
+    // Initializing GPIO ports
+    if (initialize_gpios() == ERROR_CODE){
         (void)printf("Error with GPIO initialization \n");
-        return -1;
+        return ERROR_CODE;
     }
+    (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
+
+    // Group each side's signals of Red, Yellow and Green into an array for better clarity and easy access
     char signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
     char signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
 
-    (void)printf("GPIO initialization successful!\n");
-
-    while(1){
+    while(1){   // Infinite loop for continuous running of the traffic light program
         simulateTwoWayIntersection(signalSet1, signalSet2);
     }
 }
 
-int initialize_gpios(){
-    int f=0;
-    
-    f=open(RED1dir, O_RDWR);
-    if (f < 0){
-        (void)perror("Error opening Red Direction");
-        return -1;
-    }
-    (void)write(f,"out",3);
-    (void)close(f);
+// Connecting to the GPIO ports through GPIO SysFS directory
+int16_t initialize_gpios(){
+    int16_t f=0;
 
+    // Open the RED1 LED GPIO path in ReadWrite mode
+    f=open(RED1dir, O_RDWR);
+    if (f < 0){     // If opening file fails, we get -1 as the return value, leading to us throwing an error upstream
+        (void)perror("Error opening Red Direction");
+        return ERROR_CODE;
+    }
+    (void)write(f,"out",3); // Set the port as an output port, since it's for controlling an LED device
+    (void)close((int16_t)f);
+
+    // Following processes are for other LEDs similar to the above RED1 implementation
     f=open(YELLOW1dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Yellow Direction");
-        return -1;
+        return ERROR_CODE;
     }
     (void)write(f,"out",3);
     (void)close(f);
@@ -84,7 +95,7 @@ int initialize_gpios(){
     f=open(GREEN1dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Green Direction");
-        return -1;
+        return ERROR_CODE;
     }
     (void)write(f,"out",3);
     (void)close(f);
@@ -92,7 +103,7 @@ int initialize_gpios(){
     f=open(RED2dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Red Direction");
-        return -1;
+        return ERROR_CODE;
     }
     (void)write(f,"out",3);
     (void)close(f);
@@ -100,7 +111,7 @@ int initialize_gpios(){
     f=open(YELLOW2dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Yellow Direction");
-        return -1;
+        return ERROR_CODE;
     }
     (void)write(f,"out",3);
     (void)close(f);
@@ -108,7 +119,7 @@ int initialize_gpios(){
     f=open(GREEN2dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Green Direction");
-        return -1;
+        return ERROR_CODE;
     }
     (void)write(f,"out",3);
     (void)close(f);
@@ -116,19 +127,18 @@ int initialize_gpios(){
     return 0;
 }
 
-int writeGPIO(char* light, int value){
-    int f=0;
-    f=open(light,O_WRONLY);
-
+// For writing an output into the GPIO port
+void writeGPIO(char* light, int16_t value){
+    int16_t f=0;
+    f=open(light,O_WRONLY); // Open LED value path in Write Only mode
     value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
-
     (void)close(f);
-    return 1;
 }
 
-void printSignalSetStatus(char signalSetNum,char light) {
+// Function to print the current status of a signal set, prints which color LED is ON and which are OFF
+void printSignalSetStatus(int8_t signalSetNum,int8_t light) {
     (void)printf("SignalSideNumber %c : ",signalSetNum);
-    switch (light) {
+    switch (light) {        // Since there can only be 1 light ON at a time in a signal set, there are three cases
         case 'R':
             (void)printf("Red ON, ");
             (void)printf("Yellow OFF, ");
@@ -145,12 +155,14 @@ void printSignalSetStatus(char signalSetNum,char light) {
             (void)printf("Green ON \n");
             break;
         default:
-            (void)perror("Invalid Color selected!\n");
+            (void)perror("Invalid Color selected!\n");  // Throws an error if a color other than R,Y or G is passed
     }
 }
 
-void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, char light) {
-    switch (light) {
+// To set a signalSet's light color
+// Pass the path of the SignalSet value, SignalSet Number and the first character of the light color that must be ON
+void setSignalLightColor(char signalSet[3][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light) {
+    switch (light) {        // Since there can only be 1 light ON at a time in a signal set, there are three cases
         case 'R':
             writeGPIO(signalSet[0],ON);
             writeGPIO(signalSet[1],OFF);
@@ -167,33 +179,38 @@ void setSignalLightColor(char signalSet[][GPIO_PATH_LEN], char signalSetNum, cha
             writeGPIO(signalSet[2],ON);
             break;
         default:
-            (void)perror("Invalid Color selected!\n");
+            (void)perror("Invalid Color selected!\n");  // Throws an error if a color other than R,Y or G is passed
             return;
     }
-    printSignalSetStatus(signalSetNum, light);
+    printSignalSetStatus(signalSetNum, light);  // Prints the ON and OFF lights of this SignalSet, for debugging
 }
 
-
+// Simulates a Two-way intersection having 3 traffic lights on each side
 void simulateTwoWayIntersection(char signalSet1[][GPIO_PATH_LEN], char signalSet2[][GPIO_PATH_LEN]) {
+
+    // Letting Side 1 go by setting Green1 light ON and the opposite side's Red2 light ON
     (void)printf("Triggering Side1 GO\n");
     setSignalLightColor(signalSet1, '1', 'G');
     setSignalLightColor(signalSet2, '2', 'R');
-    sleep(TWO_MIN_DELAY);
-    (void)printf("--------------------\n");
+    (void)sleep(TWO_MIN_DELAY);
+    (void)printf("--------------------\n"); // Separator for easy differentiation of each section during debugging
 
+    // Preparing Side 1 to Stop, by turning Yellow1 ON and Green1 OFF
     (void)printf("Transitioning Side1 to Yellow\n");
     setSignalLightColor(signalSet1, '1', 'Y');
-    sleep(FIVE_SEC_DELAY);
+    (void)sleep(FIVE_SEC_DELAY);
     (void)printf("--------------------\n");
 
+    // Letting Side 2 go by setting Green2 light ON and the opposite side's Red1 light ON
     (void)printf("Triggering Side2 GO\n");
     setSignalLightColor(signalSet1, '1', 'R');
     setSignalLightColor(signalSet2, '2', 'G');
-    sleep(TWO_MIN_DELAY);
+    (void)sleep(TWO_MIN_DELAY);
     (void)printf("--------------------\n");
 
+    // Preparing Side 2 to Stop, by turning Yellow2 ON and Green2 OFF
     (void)printf("Transitioning Side2 to Yellow\n");
     setSignalLightColor(signalSet2, '2', 'Y');
-    sleep(FIVE_SEC_DELAY);
+    (void)sleep(FIVE_SEC_DELAY);
     (void)printf("--------------------\n");
 }
