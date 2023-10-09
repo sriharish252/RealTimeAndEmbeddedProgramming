@@ -1,5 +1,6 @@
 //
-//
+// Credits to https://github.com/moss-n/multithreading-example-1/blob/master/order_violation_solution.c
+//      for Code Inspiration
 //
 #include <stdio.h>
 #include <stdlib.h>

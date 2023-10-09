@@ -1,3 +1,7 @@
+//
+// Credits to https://github.com/moss-n/multithreading-example-1/blob/master/mt-example.c
+//      for Code Inspiration
+//
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

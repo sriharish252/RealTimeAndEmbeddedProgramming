@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <sys/utsname.h>
 
 // GPIO paths for GPIO port access
 #define RED1dir "/sys/class/gpio/gpio67/direction" //Red light connected to GPIO67
@@ -58,6 +59,22 @@ void simulateTwoWayIntersection(int8_t signalSet1[NUM_OF_SIGNALS][GPIO_PATH_LEN]
 
 int main(void)
 {
+    struct utsname sysInfo;
+
+    // Use uname to retrieve system information
+    if (uname(&sysInfo) == -1) {
+        perror("uname");
+        return 1; // Exit with an error code
+    }
+
+    // Print system information and project group
+    printf("\nSystem name: %s\n", sysInfo.sysname);
+    printf("Node name: %s\n", sysInfo.nodename);
+    printf("Machine: %s\n", sysInfo.machine);
+    printf("Project Group Number: 6\n ");
+    printf("Student Names: Poorvi Lakkadi | Prabath Reddy Sagili Venkata | Pranitha  Kakumanu | "
+           "Sai Hruthik Karumanchi | Sai Sujith Reddy Ravula | Sri Harish Jayaram\n\n");
+
     // Initializing GPIO ports
     if (initialize_gpios() == ERROR_CODE){
         (void)printf("Error with GPIO initialization \n");
