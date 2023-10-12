@@ -44,8 +44,8 @@
 #define OFF 0
 
 // Time delays for delaying the next signal
-#define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
-#define TWO_MIN_DELAY 10 //2 minutes delay, for holding the red/green light pattern
+#define FIVE_SEC_DELAY 3 //5 second delay, for the yellow lights
+#define TWO_MIN_DELAY 5 //2 minutes delay, for holding the red/green light pattern
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
@@ -57,25 +57,22 @@ void writeGPIO(int8_t* light, int16_t value);
 void printSignalSetStatus(int8_t signalSetNum,int8_t light);
 void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
 void simulateTwoWayIntersection(int8_t signalSet1[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSet2[NUM_OF_SIGNALS][GPIO_PATH_LEN]);
-void simulateTwoWaySignalSet_StartGreen(int8_t sideNumber);
-void simulateTwoWaySignalSet_StartRed(int8_t sideNumber);
+void simulateTwoWaySignalSet1_StartGreen();
+void simulateTwoWaySignalSet2_StartRed();
 
-void *workerFunc1(void* tid) {
-    simulateTwoWaySignalSet_StartGreen('0');
-}
+void *startRoutine_TwoWay_SignalSet1_Green(void* arg);
+void *startRoutine_TwoWay_SignalSet2_Red(void* arg);
 
-void *workerFunc2(void* tid) {
-    simulateTwoWaySignalSet_StartRed('1');
-}
 
 // Global Variables
 // Group each side's signals of Red, Yellow and Green into an array for better clarity and easy access
-// int8_t signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
-// int8_t signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
-int8_t signalSets[][3][GPIO_PATH_LEN] = {
-        {RED1val, YELLOW1val, GREEN1val},
-        {RED2val, YELLOW2val, GREEN2val}
-    };
+int8_t signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
+int8_t signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
+pthread_mutex_t lock_signalSet1, lock_signalSet2;
+pthread_cond_t cond_Signal1_Red = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_Signal2_Red = PTHREAD_COND_INITIALIZER;
+int isSignal1_Red = OFF;
+int isSignal2_Red = OFF;
 
 int main(void)
 {
@@ -110,8 +107,8 @@ int main(void)
 
     int16_t side1 = 1;
     // simulateTwoWayIntersection(signalSet1, signalSet2);
-    pthread_create(&t_SignalSide1, NULL, workerFunc1,(void *)t_SignalSide1);
-    pthread_create(&t_SignalSide2, NULL, workerFunc2,(void *)t_SignalSide2);
+    pthread_create(&t_SignalSide1, NULL, startRoutine_TwoWay_SignalSet1_Green, NULL);
+    pthread_create(&t_SignalSide2, NULL, startRoutine_TwoWay_SignalSet2_Red, NULL);
     
     pthread_exit(NULL);
 }
@@ -269,40 +266,82 @@ void simulateTwoWayIntersection(int8_t signalSet1[][GPIO_PATH_LEN], int8_t signa
     }
 }
 
-void simulateTwoWaySignalSet_StartGreen(int8_t sideNumber) {
-    
+void simulateTwoWaySignalSet1_StartGreen() {
+    int8_t sideNumber = '1';
+
     while(1){   // Infinite loop for continuous running of the traffic light program
         
-        setSignalLightColor(signalSets[sideNumber], sideNumber, 'G');
+        pthread_mutex_lock(&lock_signalSet2);
+        while(isSignal2_Red == OFF) {
+            pthread_cond_wait(&cond_Signal2_Red,&lock_signalSet2);
+        }
+        pthread_mutex_unlock(&lock_signalSet2);
+
+        isSignal1_Red = OFF;
+        pthread_mutex_lock(&lock_signalSet1);
+        setSignalLightColor(signalSet1, sideNumber, 'G');
+        pthread_mutex_unlock(&lock_signalSet1);
         (void)sleep(TWO_MIN_DELAY);
 
         // Preparing Side 1 to Stop, by turning Yellow1 ON and Green1 OFF
         // (void)printf("Transitioning Side1 to Yellow\n");
-        setSignalLightColor(signalSets[sideNumber], sideNumber, 'Y');
+        pthread_mutex_lock(&lock_signalSet1);
+        setSignalLightColor(signalSet1, sideNumber, 'Y');
+        pthread_mutex_unlock(&lock_signalSet1);
         (void)sleep(FIVE_SEC_DELAY);
 
         // Letting Side 2 go by setting Green2 light ON and the opposite side's Red1 light ON
         // (void)printf("Triggering Side1 STOP\n");
-        setSignalLightColor(signalSets[sideNumber], sideNumber, 'R');
+        pthread_mutex_lock(&lock_signalSet1);
+        setSignalLightColor(signalSet1, sideNumber, 'R');
+        isSignal1_Red = ON;
+        pthread_cond_signal(&cond_Signal1_Red);
+        pthread_mutex_unlock(&lock_signalSet1);
         (void)sleep(TWO_MIN_DELAY);
         (void)sleep(FIVE_SEC_DELAY);    // Preparing Other Side to Stop
     }
 }
 
-void simulateTwoWaySignalSet_StartRed(int8_t sideNumber) {
+void simulateTwoWaySignalSet2_StartRed() {
+    int8_t sideNumber = '2';
     
     while(1){   // Infinite loop for continuous running of the traffic light program
         
-        setSignalLightColor(signalSets[sideNumber], sideNumber, 'R');
+        pthread_mutex_lock(&lock_signalSet2);
+        isSignal2_Red = ON;
+        setSignalLightColor(signalSet2, sideNumber, 'R');
+        pthread_cond_signal(&cond_Signal2_Red);
+        pthread_mutex_unlock(&lock_signalSet2);
         (void)sleep(TWO_MIN_DELAY);
 
         // Preparing Side 1 to Stop, by turning Yellow1 ON and Green1 OFF
         (void)sleep(FIVE_SEC_DELAY);
 
         // Letting Side 2 go by setting Green2 light ON and the opposite side's Red1 light ON
-        setSignalLightColor(signalSets[sideNumber], sideNumber, 'G');
+        
+        pthread_mutex_lock(&lock_signalSet1);
+        while(isSignal1_Red == OFF) {
+            pthread_cond_wait(&cond_Signal1_Red,&lock_signalSet1);
+        }
+        pthread_mutex_unlock(&lock_signalSet1);
+        isSignal2_Red = OFF;
+
+        pthread_mutex_lock(&lock_signalSet2);
+        setSignalLightColor(signalSet2, sideNumber, 'G');
+        pthread_mutex_unlock(&lock_signalSet2);
         (void)sleep(TWO_MIN_DELAY);
-        setSignalLightColor(signalSets[sideNumber], sideNumber, 'Y');
+
+        pthread_mutex_lock(&lock_signalSet2);
+        setSignalLightColor(signalSet2, sideNumber, 'Y');
+        pthread_mutex_unlock(&lock_signalSet2);
         (void)sleep(FIVE_SEC_DELAY);    // Preparing Side 2 to Stop
     }
+}
+
+void *startRoutine_TwoWay_SignalSet1_Green(void* arg) {
+    simulateTwoWaySignalSet1_StartGreen();
+}
+
+void *startRoutine_TwoWay_SignalSet2_Red(void* arg) {
+    simulateTwoWaySignalSet2_StartRed();
 }
