@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <sys/utsname.h>
 #include <pthread.h>
+#include <string.h>
 
 // GPIO paths for GPIO port access
 #define RED1dir "/sys/class/gpio/gpio67/direction" //Red light connected to GPIO67
@@ -48,8 +49,8 @@
 #define OFF 0
 
 // Time delays for delaying the next signal
-#define FIVE_SEC_DELAY 3 //5 second delay, for the yellow lights
-#define TWO_MIN_DELAY 5 //2 minutes delay, for holding the red/green light pattern
+#define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
+#define TWO_MIN_DELAY 120 //2 minutes delay, for holding the red/green light pattern
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
@@ -57,7 +58,7 @@
 
 // Function declarations
 int16_t initialize_gpios();
-int8_t readGPIO(int8_t* button);
+void readGPIO(int8_t* button, int8_t* value);
 void writeGPIO(int8_t* light, int16_t value);
 void printSignalSetStatus(int8_t signalSetNum,int8_t light);
 void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
@@ -111,11 +112,10 @@ int main(void)
            "Sai Hruthik Karumanchi | Sai Sujith Reddy Ravula | Sri Harish Jayaram\n\n");
 
     // Initializing GPIO ports
-    // TEMPORARILY COMMENTED OUT FOR TESTING
-    // if (initialize_gpios() == ERROR_CODE){
-    //     (void)printf("Error with GPIO initialization \n");
-    //     return ERROR_CODE;
-    // }
+    if (initialize_gpios() == ERROR_CODE){
+        (void)printf("Error with GPIO initialization \n");
+        return ERROR_CODE;
+    }
     (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
 
 
@@ -202,21 +202,19 @@ int16_t initialize_gpios(){
 }
 
 // For reading an input from the GPIO port
-int8_t readGPIO(int8_t* button) {
-    int8_t value = -1;
-    // int16_t f=0;
-    // f=open(button, O_RDONLY); // Open LED value path in Read Only mode
-    // (void)read(button, value, 1);
-    // (void)close(f);
-    return value;
+void readGPIO(int8_t* button, int8_t* value) {
+    int16_t f=0;
+    f=open(button, O_RDONLY); // Open LED value path in Read Only mode
+    (void)read(f, value, 1);
+    (void)close(f);
 }
 
 // For writing an output into the GPIO port
 void writeGPIO(int8_t* light, int16_t value) {
-    // int16_t f=0;
-    // f=open(light, O_WRONLY); // Open LED value path in Write Only mode
-    // value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
-    // (void)close(f);
+    int16_t f=0;
+    f=open(light, O_WRONLY); // Open LED value path in Write Only mode
+    value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
+    (void)close(f);
 }
 
 // Function to print the current status of a signal set, prints which color LED is ON and which are OFF
@@ -290,7 +288,14 @@ void simulateTwoWaySignalSet1_StartGreen() {
         pthread_mutex_lock(&lock_signalSet1);
         setSignalLightColor(signalSet1, sideNumber, 'G');
         pthread_mutex_unlock(&lock_signalSet1);
-        (void)sleep(TWO_MIN_DELAY);
+        
+        // Two Min Delay unless interrupted by wait button
+        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+            if(waitButton2_timer >= 5) {
+                break;
+            }
+            sleep(1);
+        }
 
         // Preparing Side 1 to Stop, by turning Yellow1 ON and Green1 OFF
         // (void)printf("Transitioning Side1 to Yellow\n");
@@ -306,8 +311,14 @@ void simulateTwoWaySignalSet1_StartGreen() {
         isSignal1_Red = ON;
         pthread_cond_signal(&cond_Signal1_Red);
         pthread_mutex_unlock(&lock_signalSet1);
-        (void)sleep(TWO_MIN_DELAY);
-        (void)sleep(FIVE_SEC_DELAY);    // Preparing Other Side to Stop
+        
+        // Two Min Delay unless interrupted by wait button
+        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+            if(waitButton1_timer >= 5) {
+                break;
+            }
+            sleep(1);
+        }
     }
 }
 
@@ -323,10 +334,13 @@ void simulateTwoWaySignalSet2_StartRed() {
         pthread_cond_signal(&cond_Signal2_Red);
         pthread_mutex_unlock(&lock_signalSet2);
 
-        (void)sleep(TWO_MIN_DELAY);
-
-        // Preparing Side 1 to Stop, by turning Yellow1 ON and Green1 OFF
-        (void)sleep(FIVE_SEC_DELAY);
+        // Two Min Delay unless interrupted by wait button
+        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+            if(waitButton2_timer >= 5) {
+                break;
+            }
+            sleep(1);
+        }
 
         // Letting Side 2 go by setting Green2 light ON and the opposite side's Red1 light ON
         
@@ -340,8 +354,14 @@ void simulateTwoWaySignalSet2_StartRed() {
         pthread_mutex_lock(&lock_signalSet2);
         setSignalLightColor(signalSet2, sideNumber, 'G');
         pthread_mutex_unlock(&lock_signalSet2);
-        (void)sleep(TWO_MIN_DELAY);
         
+        // Two Min Delay unless interrupted by wait button
+        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+            if(waitButton1_timer >= 5) {
+                break;
+            }
+            sleep(1);
+        }
 
         pthread_mutex_lock(&lock_signalSet2);
         setSignalLightColor(signalSet2, sideNumber, 'Y');
@@ -351,12 +371,18 @@ void simulateTwoWaySignalSet2_StartRed() {
 }
 
 void enableWaitButton1() {
+    int8_t value[5];
     while(1){   // Infinite loop for continuous running of the wait button program
-        int8_t value = readGPIO(waitButton1);
+        readGPIO(waitButton1, value);
         pthread_mutex_lock(&lock_waitButton1_timer);
-        if(value == ON) {
+        if(strcmp(value, "1") == 0) {
             waitButton1_timer++;
         } else {
+            waitButton1_timer = 0;
+        }
+        
+        // Reset the WaitButton after 8 seconds to avoid false triggers
+        if(waitButton1_timer >= 8) {
             waitButton1_timer = 0;
         }
         pthread_mutex_unlock(&lock_waitButton1_timer);
@@ -365,18 +391,20 @@ void enableWaitButton1() {
 }
 
 void enableWaitButton2() {
+    int8_t value[5];
     while(1){   // Infinite loop for continuous running of the wait button program
-        int8_t value = readGPIO(waitButton2);
+        readGPIO(waitButton2, value);
         pthread_mutex_lock(&lock_waitButton2_timer);
-        if(value == ON) {
+        if(strcmp(value, "1") == 0) {
             waitButton2_timer++;
         } else {
             waitButton2_timer = 0;
         }
 
-        // if(waitButton2_timer >= 5 && isSignal2_Red == ON) {
-        //     waitButton2_timer = 0;
-        // }
+        // Reset the WaitButton after 8 seconds to avoid false triggers
+        if(waitButton2_timer >= 8) {
+            waitButton2_timer = 0;
+        }
         pthread_mutex_unlock(&lock_waitButton2_timer);
         sleep(1); //Set to 1 second to update the button every second
     }
