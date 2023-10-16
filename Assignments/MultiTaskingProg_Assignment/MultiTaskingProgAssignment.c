@@ -205,7 +205,7 @@ int16_t initialize_gpios(){
 void readGPIO(int8_t* button, int8_t* value) {
     int16_t f=0;
     f=open(button, O_RDONLY); // Open LED value path in Read Only mode
-    (void)read(f, value, 1);
+    (void)read(f, value, 6);
     (void)close(f);
 }
 
@@ -371,11 +371,11 @@ void simulateTwoWaySignalSet2_StartRed() {
 }
 
 void enableWaitButton1() {
-    int8_t value[5];
+    int8_t value[10];
     while(1){   // Infinite loop for continuous running of the wait button program
         readGPIO(waitButton1, value);
         pthread_mutex_lock(&lock_waitButton1_timer);
-        if(strcmp(value, "1") == 0) {
+        if(value[0] == '1') {
             waitButton1_timer++;
         } else {
             waitButton1_timer = 0;
@@ -391,11 +391,11 @@ void enableWaitButton1() {
 }
 
 void enableWaitButton2() {
-    int8_t value[5];
+    int8_t value[10];
     while(1){   // Infinite loop for continuous running of the wait button program
         readGPIO(waitButton2, value);
         pthread_mutex_lock(&lock_waitButton2_timer);
-        if(strcmp(value, "1") == 0) {
+        if(value[0] == '1') {
             waitButton2_timer++;
         } else {
             waitButton2_timer = 0;
