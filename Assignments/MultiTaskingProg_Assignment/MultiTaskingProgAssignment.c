@@ -187,7 +187,7 @@ int16_t initialize_gpios(){
         (void)perror("Error opening Wait Button 1 Direction");
         return ERROR_CODE;
     }
-    (void)write(f,"out",3);
+    (void)write(f,"in",3);
     (void)close(f);
 
     f=open(WAIT_BUTTON2dir, O_RDWR);
@@ -195,7 +195,7 @@ int16_t initialize_gpios(){
         (void)perror("Error opening Wait Button 2 Direction");
         return ERROR_CODE;
     }
-    (void)write(f,"out",3);
+    (void)write(f,"in",3);
     (void)close(f);
 
     return 0;
