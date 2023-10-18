@@ -1,5 +1,5 @@
 //
-// MultiTasking Programming Assignment
+// MultiTasking Programming Assignment GPIO commented out for emulation
 // Simulate a traffic light system for a two-way intersection using 6 LEDs connected to the BeagleBone Black
 //      with a wait sensor (button) at each direction that interrupts the 2 minute wait time for the Red light
 //      and triggers a transition to Green when held for 5 seconds
@@ -50,7 +50,7 @@
 
 // Time delays for delaying the next signal
 #define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
-#define TWO_MIN_DELAY 120 //2 minutes delay, for holding the red/green light pattern
+#define TWO_MIN_DELAY 10 //2 minutes delay, for holding the red/green light pattern
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
@@ -72,7 +72,6 @@ void *startRoutine_TwoWay_SignalSet1_Green(void* arg);
 void *startRoutine_TwoWay_SignalSet2_Red(void* arg);
 void *startRoutine_enableWaitButton1(void* arg);
 void *startRoutine_enableWaitButton2(void* arg);
-
 
 // Global Variables
 // Group each side's signals of Red, Yellow and Green into an array for better clarity and easy access
@@ -112,17 +111,23 @@ int main(void)
            "Sai Hruthik Karumanchi | Sai Sujith Reddy Ravula | Sri Harish Jayaram\n\n");
 
     // Initializing GPIO ports
-    if (initialize_gpios() == ERROR_CODE){
-        (void)printf("Error with GPIO initialization \n");
-        return ERROR_CODE;
-    }
-    (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
+    // if (initialize_gpios() == ERROR_CODE){
+    //     (void)printf("Error with GPIO initialization \n");
+    //     return ERROR_CODE;
+    // }
+    // (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
 
     // Create Threads for Signals and their corresponding WaitButtons
     pthread_create(&t_SignalSide1, NULL, startRoutine_TwoWay_SignalSet1_Green, NULL);
     pthread_create(&t_SignalSide2, NULL, startRoutine_TwoWay_SignalSet2_Red, NULL);
     pthread_create(&t_SignalSide1, NULL, startRoutine_enableWaitButton1, NULL);
     pthread_create(&t_SignalSide2, NULL, startRoutine_enableWaitButton2, NULL);
+
+    // Simulate WaitButton2 being triggered after a FIVE_SEC_DELAY
+    for(int i=0; i<=FIVE_SEC_DELAY; i++) {
+        waitButton2_timer = 5;
+        sleep(1);
+    }
     
     pthread_exit(NULL);
 }
@@ -202,18 +207,18 @@ int16_t initialize_gpios(){
 
 // For reading an input from the GPIO port
 void readGPIO(int8_t* button, int8_t* value) {
-    int16_t f=0;
-    f=open(button, O_RDONLY); // Open LED value path in Read Only mode
-    (void)read(f, value, 6);
-    (void)close(f);
+    // int16_t f=0;
+    // f=open(button, O_RDONLY); // Open LED value path in Read Only mode
+    // (void)read(f, value, 6);
+    // (void)close(f);
 }
 
 // For writing an output into the GPIO port
 void writeGPIO(int8_t* light, int16_t value) {
-    int16_t f=0;
-    f=open(light, O_WRONLY); // Open LED value path in Write Only mode
-    value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
-    (void)close(f);
+    // int16_t f=0;
+    // f=open(light, O_WRONLY); // Open LED value path in Write Only mode
+    // value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
+    // (void)close(f);
 }
 
 // Function to print the current status of a signal set, prints which color LED is ON and which are OFF
