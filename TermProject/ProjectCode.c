@@ -50,7 +50,7 @@ int main(void)
 
     int8_t value[10];
     while (1) {
-        readPIRSensor(&value);
+        readPIRSensor(value);
         printf("PIR Sensor Value: %s\n", value); // Assuming the value is a character
         usleep(500000); // Sleep for .5 second
     }
