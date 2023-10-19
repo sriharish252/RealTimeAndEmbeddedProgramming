@@ -51,43 +51,43 @@
 // Time delays for delaying the next signal
 #define FIVE_SEC_DELAY 5 //5 second delay, for the yellow lights
 #define TWO_MIN_DELAY 120 //2 minutes delay, for holding the red/green light pattern
+#define ONE_SEC_DELAY 1 //1 second delay, for using the sleep function
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
 #define NUM_OF_SIGNALS 3
 
 // Function declarations
-int16_t initialize_gpios();
-void readGPIO(int8_t* button, int8_t* value);
-void writeGPIO(int8_t* light, int16_t value);
-void printSignalSetStatus(int8_t signalSetNum,int8_t light);
-void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
-void simulateTwoWayIntersection(int8_t signalSet1[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSet2[NUM_OF_SIGNALS][GPIO_PATH_LEN]);
-void simulateTwoWaySignalSet1_StartGreen();
-void simulateTwoWaySignalSet2_StartRed();
-void enableWaitButton1();
-void enableWaitButton2();
+static int16_t initialize_gpios();
+static void readGPIO(int8_t* button, int8_t* value);
+static void writeGPIO(int8_t* light, int16_t value);
+static void printSignalSetStatus(int8_t signalSetNum,int8_t light);
+static void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light);
+static void simulateTwoWaySignalSet1_StartGreen();
+static void simulateTwoWaySignalSet2_StartRed();
+static void enableWaitButton1();
+static void enableWaitButton2();
 
-void *startRoutine_TwoWay_SignalSet1_Green(void* arg);
-void *startRoutine_TwoWay_SignalSet2_Red(void* arg);
-void *startRoutine_enableWaitButton1(void* arg);
-void *startRoutine_enableWaitButton2(void* arg);
+static void* startRoutine_TwoWay_SignalSet1_Green();
+static void* startRoutine_TwoWay_SignalSet2_Red();
+static void* startRoutine_enableWaitButton1();
+static void* startRoutine_enableWaitButton2();
 
 
 // Global Variables
 // Group each side's signals of Red, Yellow and Green into an array for better clarity and easy access
-int8_t signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
-int8_t signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
-int8_t waitButton1[] = WAIT_BUTTON1val;
-int8_t waitButton2[] = WAIT_BUTTON2val;
-pthread_mutex_t lock_signalSet1, lock_signalSet2;
-pthread_mutex_t lock_waitButton1_timer, lock_waitButton2_timer;
-pthread_cond_t cond_Signal1_Red = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond_Signal2_Red = PTHREAD_COND_INITIALIZER;
-int isSignal1_Red = OFF;
-int isSignal2_Red = OFF;
-int16_t waitButton1_timer = 0;
-int16_t waitButton2_timer = 0;
+static int8_t signalSet1[][GPIO_PATH_LEN] = {RED1val, YELLOW1val, GREEN1val};
+static int8_t signalSet2[][GPIO_PATH_LEN] = {RED2val, YELLOW2val, GREEN2val};
+static int8_t waitButton1[] = WAIT_BUTTON1val;
+static int8_t waitButton2[] = WAIT_BUTTON2val;
+static pthread_mutex_t lock_signalSet1, lock_signalSet2;   // Mutexes for signals and wait buttons
+static pthread_mutex_t lock_waitButton1_timer, lock_waitButton2_timer;
+static pthread_cond_t cond_Signal1_Red = PTHREAD_COND_INITIALIZER; // Condition variables used to signal that the current side is set to Red
+static pthread_cond_t cond_Signal2_Red = PTHREAD_COND_INITIALIZER;
+static int16_t isSignal1_Red = OFF;    // To validate if the other side is OFF(0) or ON(1)
+static int16_t isSignal2_Red = OFF;
+static int16_t waitButton1_timer = 0;  // To indicate the number of seconds the waitButton is pushed and held on
+static int16_t waitButton2_timer = 0;
 
 int main(void)
 {
@@ -98,17 +98,17 @@ int main(void)
     pthread_t t_WaitButtonSide2;
 
     // Use uname to retrieve system information
-    if (uname(&sysInfo) == -1) {
-        perror("uname");
-        return 1; // Exit with an error code
+    if (uname(&sysInfo) == ERROR_CODE) {
+        (void)perror("uname");
+        return ERROR_CODE; // Exit with an error code
     }
 
     // Print system information and project group
-    printf("\nSystem name: %s\n", sysInfo.sysname);
-    printf("Node name: %s\n", sysInfo.nodename);
-    printf("Machine: %s\n", sysInfo.machine);
-    printf("Project Group Number: 6\n");
-    printf("Student Names: Poorvi Lakkadi | Prabath Reddy Sagili Venkata | Pranitha  Kakumanu | "
+    (void)printf("\nSystem name: %s\n", sysInfo.sysname);
+    (void)printf("Node name: %s\n", sysInfo.nodename);
+    (void)printf("Machine: %s\n", sysInfo.machine);
+    (void)printf("Project Group Number: 6\n");
+    (void)printf("Student Names: Poorvi Lakkadi | Prabath Reddy Sagili Venkata | Pranitha  Kakumanu | "
            "Sai Hruthik Karumanchi | Sai Sujith Reddy Ravula | Sri Harish Jayaram\n\n");
 
     // Initializing GPIO ports
@@ -118,17 +118,17 @@ int main(void)
     }
     (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
 
-    // Create Threads for Signals and their corresponding WaitButtons
-    pthread_create(&t_SignalSide1, NULL, startRoutine_TwoWay_SignalSet1_Green, NULL);
-    pthread_create(&t_SignalSide2, NULL, startRoutine_TwoWay_SignalSet2_Red, NULL);
-    pthread_create(&t_SignalSide1, NULL, startRoutine_enableWaitButton1, NULL);
-    pthread_create(&t_SignalSide2, NULL, startRoutine_enableWaitButton2, NULL);
-    
-    pthread_exit(NULL);
+    // Create Threads for Traffic Signals and their corresponding WaitButtons
+    (void)pthread_create(&t_SignalSide1, NULL, startRoutine_TwoWay_SignalSet1_Green, NULL);
+    (void)pthread_create(&t_SignalSide2, NULL, startRoutine_TwoWay_SignalSet2_Red, NULL);
+    (void)pthread_create(&t_SignalSide1, NULL, startRoutine_enableWaitButton1, NULL);
+    (void)pthread_create(&t_SignalSide2, NULL, startRoutine_enableWaitButton2, NULL);
+
+    pthread_exit(NULL); // Waits for the child threads to exit
 }
 
 // Connecting to the GPIO ports through GPIO SysFS directory
-int16_t initialize_gpios(){
+static int16_t initialize_gpios(){
     int16_t f=0;
 
     // Open the RED1 LED GPIO path in ReadWrite mode
@@ -140,7 +140,7 @@ int16_t initialize_gpios(){
     (void)write(f,"out",3); // Set the port as an output port, since it's for controlling an LED device
     (void)close((int16_t)f);
 
-    // Following processes are for other LEDs similar to the above RED1 implementation
+    // Following processes are for other LEDs and WaitButtons similar to the above RED1 implementation
     f=open(YELLOW1dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Yellow 1 Direction");
@@ -201,15 +201,15 @@ int16_t initialize_gpios(){
 }
 
 // For reading an input from the GPIO port
-void readGPIO(int8_t* button, int8_t* value) {
+static void readGPIO(int8_t* button, int8_t* value) {
     int16_t f=0;
-    f=open(button, O_RDONLY); // Open LED value path in Read Only mode
+    f=open(button, O_RDONLY); // Open button value path in Read Only mode
     (void)read(f, value, 6);
     (void)close(f);
 }
 
 // For writing an output into the GPIO port
-void writeGPIO(int8_t* light, int16_t value) {
+static void writeGPIO(int8_t* light, int16_t value) {
     int16_t f=0;
     f=open(light, O_WRONLY); // Open LED value path in Write Only mode
     value == ON ? (void)write(f,"1",1) : (void)write(f,"0",1);
@@ -217,7 +217,7 @@ void writeGPIO(int8_t* light, int16_t value) {
 }
 
 // Function to print the current status of a signal set, prints which color LED is ON and which are OFF
-void printSignalSetStatus(int8_t signalSetNum,int8_t light) {
+static void printSignalSetStatus(int8_t signalSetNum,int8_t light) {
     (void)printf("SignalSideNumber %c : ",signalSetNum);
     switch (light) {        // Since there can only be 1 light ON at a time in a signal set, there are three cases
         case 'R':
@@ -243,7 +243,7 @@ void printSignalSetStatus(int8_t signalSetNum,int8_t light) {
 
 // To set a signalSet's light color
 // Pass the path of the SignalSet value, SignalSet Number and the first character of the light color that must be ON
-void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light) {
+static void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t signalSetNum, int8_t light) {
     int8_t invalidLightError = 0;
     switch (light) {        // Since there can only be 1 light ON at a time in a signal set, there are three cases
         case 'R':
@@ -272,108 +272,106 @@ void setSignalLightColor(int8_t signalSet[NUM_OF_SIGNALS][GPIO_PATH_LEN], int8_t
 }
 
 // Simulates a Two-way intersection with SignalSet1 starting on Green
-void simulateTwoWaySignalSet1_StartGreen() {
+static void simulateTwoWaySignalSet1_StartGreen() {
     int8_t sideNumber = '1';
 
     while(1){   // Infinite loop for continuous running of the traffic light program
         
-        pthread_mutex_lock(&lock_signalSet2);
-        while(isSignal2_Red == OFF) {
-            pthread_cond_wait(&cond_Signal2_Red,&lock_signalSet2);
+        (void)pthread_mutex_lock(&lock_signalSet2);   // Locks the mutex
+        while(isSignal2_Red == OFF) {   // Checks if the other side's signal is not set to Red
+            (void)pthread_cond_wait(&cond_Signal2_Red,&lock_signalSet2);  //
         }
-        pthread_mutex_unlock(&lock_signalSet2);
+        (void)pthread_mutex_unlock(&lock_signalSet2);   // Unlocks the mutex
 
         isSignal1_Red = OFF;
-        pthread_mutex_lock(&lock_signalSet1);
+        (void)pthread_mutex_lock(&lock_signalSet1);
         setSignalLightColor(signalSet1, sideNumber, 'G');
-        pthread_mutex_unlock(&lock_signalSet1);
+        (void)pthread_mutex_unlock(&lock_signalSet1);
         
         // Two Min Delay unless interrupted by wait button
-        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+        for(int16_t i=0; i<=TWO_MIN_DELAY; i++) {
             if(waitButton2_timer >= 5) {
                 break;
             }
-            sleep(1);
+            (void)sleep(ONE_SEC_DELAY);
         }
 
         // Preparing Side 1 to Stop, by turning Yellow1 ON and Green1 OFF
-        // (void)printf("Transitioning Side1 to Yellow\n");
-        pthread_mutex_lock(&lock_signalSet1);
+        (void)pthread_mutex_lock(&lock_signalSet1);
         setSignalLightColor(signalSet1, sideNumber, 'Y');
-        pthread_mutex_unlock(&lock_signalSet1);
+        (void)pthread_mutex_unlock(&lock_signalSet1);
         (void)sleep(FIVE_SEC_DELAY);
 
         // Letting Side 2 go by setting Green2 light ON and the opposite side's Red1 light ON
-        // (void)printf("Triggering Side1 STOP\n");
-        pthread_mutex_lock(&lock_signalSet1);
+        (void)pthread_mutex_lock(&lock_signalSet1);
         setSignalLightColor(signalSet1, sideNumber, 'R');
         isSignal1_Red = ON;
-        pthread_cond_signal(&cond_Signal1_Red);
-        pthread_mutex_unlock(&lock_signalSet1);
+        (void)pthread_cond_signal(&cond_Signal1_Red);
+        (void)pthread_mutex_unlock(&lock_signalSet1);
         
         // Two Min Delay unless interrupted by wait button
-        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+        for(int16_t i=0; i<=TWO_MIN_DELAY; i++) {
             if(waitButton1_timer >= 5) {
                 break;
             }
-            sleep(1);
+            (void)sleep(ONE_SEC_DELAY);
         }
     }
 }
 
 // Simulates a Two-way intersection with SignalSet2 starting on Red
-void simulateTwoWaySignalSet2_StartRed() {
+static void simulateTwoWaySignalSet2_StartRed() {
     int8_t sideNumber = '2';
     
     while(1){   // Infinite loop for continuous running of the traffic light program
         
-        pthread_mutex_lock(&lock_signalSet2);
+        (void)pthread_mutex_lock(&lock_signalSet2);   // Locks the mutex
         isSignal2_Red = ON;
         setSignalLightColor(signalSet2, sideNumber, 'R');
-        pthread_cond_signal(&cond_Signal2_Red);
-        pthread_mutex_unlock(&lock_signalSet2);
+        (void)pthread_cond_signal(&cond_Signal2_Red);
+        (void)pthread_mutex_unlock(&lock_signalSet2);   // Unlocks the mutex
 
         // Two Min Delay unless interrupted by wait button
-        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+        for(int16_t i=0; i<=TWO_MIN_DELAY; i++) {
             if(waitButton2_timer >= 5) {
                 break;
             }
-            sleep(1);
+            (void)sleep(ONE_SEC_DELAY);
         }
 
         // Letting Side 2 go by setting Green2 light ON and the opposite side's Red1 light ON
         
-        pthread_mutex_lock(&lock_signalSet1);
+        (void)pthread_mutex_lock(&lock_signalSet1);
         while(isSignal1_Red == OFF) {
-            pthread_cond_wait(&cond_Signal1_Red,&lock_signalSet1);
+            (void)pthread_cond_wait(&cond_Signal1_Red,&lock_signalSet1);
         }
-        pthread_mutex_unlock(&lock_signalSet1);
+        (void)pthread_mutex_unlock(&lock_signalSet1);
         isSignal2_Red = OFF;
 
-        pthread_mutex_lock(&lock_signalSet2);
+        (void)pthread_mutex_lock(&lock_signalSet2);
         setSignalLightColor(signalSet2, sideNumber, 'G');
-        pthread_mutex_unlock(&lock_signalSet2);
+        (void)pthread_mutex_unlock(&lock_signalSet2);
         
         // Two Min Delay unless interrupted by wait button
-        for(int i=0; i<=TWO_MIN_DELAY; i++) {
+        for(int16_t i=0; i<=TWO_MIN_DELAY; i++) {
             if(waitButton1_timer >= 5) {
                 break;
             }
-            sleep(1);
+            (void)sleep(ONE_SEC_DELAY);
         }
 
-        pthread_mutex_lock(&lock_signalSet2);
+        (void)pthread_mutex_lock(&lock_signalSet2);
         setSignalLightColor(signalSet2, sideNumber, 'Y');
-        pthread_mutex_unlock(&lock_signalSet2);
+        (void)pthread_mutex_unlock(&lock_signalSet2);
         (void)sleep(FIVE_SEC_DELAY);    // Preparing Side 2 to Stop
     }
 }
 
-void enableWaitButton1() {
+static void enableWaitButton1() {
     int8_t value[10];
     while(1){   // Infinite loop for continuous running of the wait button program
         readGPIO(waitButton1, value);
-        pthread_mutex_lock(&lock_waitButton1_timer);
+        (void)pthread_mutex_lock(&lock_waitButton1_timer);
         if(value[0] == '1') {
             waitButton1_timer++;
         } else {
@@ -384,16 +382,16 @@ void enableWaitButton1() {
         if(waitButton1_timer >= 8) {
             waitButton1_timer = 0;
         }
-        pthread_mutex_unlock(&lock_waitButton1_timer);
-        sleep(1); //Set to 1 second to update the button every second
+        (void)pthread_mutex_unlock(&lock_waitButton1_timer);
+        (void)sleep(ONE_SEC_DELAY); //Set to 1 second to update the button every second
     }
 }
 
-void enableWaitButton2() {
+static void enableWaitButton2() {
     int8_t value[10];
     while(1){   // Infinite loop for continuous running of the wait button program
         readGPIO(waitButton2, value);
-        pthread_mutex_lock(&lock_waitButton2_timer);
+        (void)pthread_mutex_lock(&lock_waitButton2_timer);
         if(value[0] == '1') {
             waitButton2_timer++;
         } else {
@@ -404,23 +402,23 @@ void enableWaitButton2() {
         if(waitButton2_timer >= 8) {
             waitButton2_timer = 0;
         }
-        pthread_mutex_unlock(&lock_waitButton2_timer);
-        sleep(1); //Set to 1 second to update the button every second
+        (void)pthread_mutex_unlock(&lock_waitButton2_timer);
+        (void)sleep(ONE_SEC_DELAY); //Set to 1 second to update the button every second
     }
 }
 
-void *startRoutine_TwoWay_SignalSet1_Green(void* arg) {
+static void *startRoutine_TwoWay_SignalSet1_Green() {
     simulateTwoWaySignalSet1_StartGreen();
 }
 
-void *startRoutine_TwoWay_SignalSet2_Red(void* arg) {
+static void *startRoutine_TwoWay_SignalSet2_Red() {
     simulateTwoWaySignalSet2_StartRed();
 }
 
-void *startRoutine_enableWaitButton1(void* arg) {
+static void *startRoutine_enableWaitButton1() {
     enableWaitButton1();
 }
 
-void *startRoutine_enableWaitButton2(void* arg) {
+static void *startRoutine_enableWaitButton2() {
     enableWaitButton2();
 }
