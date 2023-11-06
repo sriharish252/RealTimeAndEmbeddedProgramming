@@ -35,8 +35,8 @@
 #define GREENval "/sys/class/gpio/gpio68/value"
 #define START_BUTTONdir "/sys/class/gpio/gpio66/direction"
 #define START_BUTTONval "/sys/class/gpio/gpio66/value"
-#define RESET_BUTTONdir "/sys/class/gpio/gpio27/direction"
-#define RESET_BUTTONval "/sys/class/gpio/gpio27/value"
+#define RESET_BUTTONdir "/sys/class/gpio/gpio69/direction"
+#define RESET_BUTTONval "/sys/class/gpio/gpio69/value"
 
 // ON and OFF values for controlling LED light states
 #define ON 1
