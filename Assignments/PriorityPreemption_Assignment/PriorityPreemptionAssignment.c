@@ -27,7 +27,6 @@
 #include <sys/utsname.h>
 #include <pthread.h>
 #include <string.h>
-// #include <sched.h>
 
 // GPIO paths for GPIO port access
 #define REDdir "/sys/class/gpio/gpio67/direction" //Red light connected to GPIO67
@@ -75,8 +74,7 @@ static int8_t isStopwatchOn = OFF;
 
 
 
-int main(void)
-{
+int main(void) {
     struct utsname sysInfo;
     pthread_t t_RunStopwatchTimer;
     pthread_t t_Stopwatch;
@@ -153,7 +151,7 @@ int main(void)
 
 
 // Connecting to the GPIO ports through GPIO SysFS directory
-static int16_t initialize_gpios(){
+static int16_t initialize_gpios() {
     int16_t f=0;
 
     // Open the RED LED GPIO path in ReadWrite mode
