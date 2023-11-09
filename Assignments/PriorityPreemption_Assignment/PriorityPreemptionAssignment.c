@@ -43,9 +43,9 @@
 #define OFF 0
 
 // Time delays for delaying the next signal
-#define ONE_SEC_DELAY 1 //1 second delay
-#define TEN_SEC_DELAY 10 //10 seconds delay
-#define HUNDRED_SEC_DELAY 100 //100 second delay
+#define ONE_MILLISEC_DELAY 1000 //1 millisecond delay defined in microseconds
+#define TEN_MILLISEC_DELAY 10000 //10 milliseconds delay defined in microseconds
+#define HUNDRED_MILLISEC_DELAY 100000 //100 milli seconds delay defined in microseconds
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
@@ -69,7 +69,7 @@ static void *startRoutine_resetButton();
 static pthread_mutex_t lock_red, lock_green;   // Mutexes for the red and green lights
 static pthread_mutex_t lock_stopwatchTimer;   // Mutexes for the stopwatch timer
 static pthread_mutex_t lock_isStopwatchOn;   // Mutexes for the stopwatch timer
-static int16_t stopwatchTimer = 0;  // The number of seconds of the stopwatch timer
+static float stopwatchTimer = 0;  // The number of seconds of the stopwatch timer
 static int8_t isStopwatchOn = OFF;
 
 
@@ -81,42 +81,43 @@ int main(void) {
     pthread_t t_StartButton;
     pthread_t t_ResetButton;
 
-    pthread_attr_t attr_RunStopwatchTimer;
-    pthread_attr_t attr_Stopwatch;
-    pthread_attr_t attr_StartButton;
-    pthread_attr_t attr_ResetButton;;
-    pthread_attr_init(&attr_RunStopwatchTimer);
-    pthread_attr_init(&attr_Stopwatch);
-    pthread_attr_init(&attr_StartButton);
-    pthread_attr_init(&attr_ResetButton);
+    // pthread_attr_t attr_RunStopwatchTimer;
+    // pthread_attr_t attr_Stopwatch;
+    // pthread_attr_t attr_StartButton;
+    // pthread_attr_t attr_ResetButton;;
+    // pthread_attr_init(&attr_RunStopwatchTimer);
+    // pthread_attr_init(&attr_Stopwatch);
+    // pthread_attr_init(&attr_StartButton);
+    // pthread_attr_init(&attr_ResetButton);
 
-    // Set the thread to inherit scheduling attributes from the parent thread (optional).
-    pthread_attr_setinheritsched(&attr_RunStopwatchTimer, PTHREAD_EXPLICIT_SCHED);
-    pthread_attr_setinheritsched(&attr_Stopwatch, PTHREAD_EXPLICIT_SCHED);
-    pthread_attr_setinheritsched(&attr_StartButton, PTHREAD_EXPLICIT_SCHED);
-    pthread_attr_setinheritsched(&attr_ResetButton, PTHREAD_EXPLICIT_SCHED);
+    // // Set the thread to inherit scheduling attributes from the parent thread (optional).
+    // pthread_attr_setinheritsched(&attr_RunStopwatchTimer, PTHREAD_EXPLICIT_SCHED);
+    // pthread_attr_setinheritsched(&attr_Stopwatch, PTHREAD_EXPLICIT_SCHED);
+    // pthread_attr_setinheritsched(&attr_StartButton, PTHREAD_EXPLICIT_SCHED);
+    // pthread_attr_setinheritsched(&attr_ResetButton, PTHREAD_EXPLICIT_SCHED);
 
-    // Set the scheduling policy (e.g., SCHED_FIFO for real-time scheduling).
-    pthread_attr_setschedpolicy(&attr_RunStopwatchTimer, SCHED_OTHER);
-    pthread_attr_setschedpolicy(&attr_Stopwatch, SCHED_OTHER);
-    pthread_attr_setschedpolicy(&attr_StartButton, SCHED_OTHER);
-    pthread_attr_setschedpolicy(&attr_ResetButton, SCHED_OTHER);
+    // // Set the scheduling policy (e.g., SCHED_FIFO for real-time scheduling).
+    // pthread_attr_setschedpolicy(&attr_RunStopwatchTimer, SCHED_OTHER);
+    // pthread_attr_setschedpolicy(&attr_Stopwatch, SCHED_OTHER);
+    // pthread_attr_setschedpolicy(&attr_StartButton, SCHED_OTHER);
+    // pthread_attr_setschedpolicy(&attr_ResetButton, SCHED_OTHER);
+    
 
-    // Create a struct for the priority and set the desired priority.
-    struct sched_param param_RunStopwatchTimer;
-    param_RunStopwatchTimer.sched_priority = 50; // Set the priority value (adjust as needed).
-    struct sched_param param_Stopwatch;
-    param_Stopwatch.sched_priority = 30;
-    struct sched_param param_StartButton;
-    param_StartButton.sched_priority = 20;
-    struct sched_param param_ResetButton;
-    param_ResetButton.sched_priority = 10;
+    // // Create a struct for the priority and set the desired priority.
+    // struct sched_param param_RunStopwatchTimer;
+    // param_RunStopwatchTimer.sched_priority = 50; // Set the priority value (adjust as needed).
+    // struct sched_param param_Stopwatch;
+    // param_Stopwatch.sched_priority = 30;
+    // struct sched_param param_StartButton;
+    // param_StartButton.sched_priority = 20;
+    // struct sched_param param_ResetButton;
+    // param_ResetButton.sched_priority = 10;
 
-    // Set the scheduling parameters (priority) for the thread.
-    pthread_attr_setschedparam(&attr_RunStopwatchTimer, &param_RunStopwatchTimer);
-    pthread_attr_setschedparam(&attr_Stopwatch, &param_Stopwatch);
-    pthread_attr_setschedparam(&attr_StartButton, &param_StartButton);
-    pthread_attr_setschedparam(&attr_ResetButton, &param_ResetButton);
+    // // Set the scheduling parameters (priority) for the thread.
+    // pthread_attr_setschedparam(&attr_RunStopwatchTimer, &param_RunStopwatchTimer);
+    // pthread_attr_setschedparam(&attr_Stopwatch, &param_Stopwatch);
+    // pthread_attr_setschedparam(&attr_StartButton, &param_StartButton);
+    // pthread_attr_setschedparam(&attr_ResetButton, &param_ResetButton);
     
 
     // Use uname to retrieve system information
@@ -141,10 +142,15 @@ int main(void) {
     (void)printf("GPIO initialization successful!\n");  // Print statement confirming GPIO port access for debugging
 
     // Create Threads for Stopwatch and it's Start/Stop and Reset Buttons
-    (void)pthread_create(&t_RunStopwatchTimer, &attr_RunStopwatchTimer, startRoutine_runStopwatchTimer, NULL);
-    (void)pthread_create(&t_Stopwatch, &attr_Stopwatch, startRoutine_stopwatch, NULL);
-    (void)pthread_create(&t_StartButton, &attr_StartButton, startRoutine_startButton, NULL);
-    (void)pthread_create(&t_ResetButton, &attr_ResetButton, startRoutine_resetButton, NULL);
+    // (void)pthread_create(&t_RunStopwatchTimer, &attr_RunStopwatchTimer, startRoutine_runStopwatchTimer, NULL);
+    // (void)pthread_create(&t_Stopwatch, &attr_Stopwatch, startRoutine_stopwatch, NULL);
+    // (void)pthread_create(&t_StartButton, &attr_StartButton, startRoutine_startButton, NULL);
+    // (void)pthread_create(&t_ResetButton, &attr_ResetButton, startRoutine_resetButton, NULL);
+
+    (void)pthread_create(&t_RunStopwatchTimer, NULL, startRoutine_runStopwatchTimer, NULL);
+    (void)pthread_create(&t_Stopwatch, NULL, startRoutine_stopwatch, NULL);
+    (void)pthread_create(&t_StartButton, NULL, startRoutine_startButton, NULL);
+    (void)pthread_create(&t_ResetButton, NULL, startRoutine_resetButton, NULL);
 
     pthread_exit(NULL); // Waits for the child threads to exit
 }
@@ -252,10 +258,10 @@ static void runStopwatchTimer() {
     while(1) {   // Infinite loop for continuous running
         if(isStopwatchOn == ON) {
             (void)pthread_mutex_lock(&lock_stopwatchTimer);
-            stopwatchTimer+=1;
+            stopwatchTimer+=0.001;
             (void)pthread_mutex_unlock(&lock_stopwatchTimer);
         }
-        (void)sleep(ONE_SEC_DELAY);
+        (void)usleep(ONE_MILLISEC_DELAY);
     }
 }
 
@@ -274,16 +280,17 @@ static void stopwatch() {
         }
         (void)pthread_mutex_unlock(&lock_red);
         (void)pthread_mutex_unlock(&lock_green);
-        (void)printf("StopwatchTimer value: %d \n", stopwatchTimer);
-        (void)sleep(TEN_SEC_DELAY);
+        (void)printf("StopwatchTimer value: %f \n", stopwatchTimer);
+        (void)usleep(HUNDRED_MILLISEC_DELAY);
     }
 }
 
 static void startButton() {
-    int8_t startButtonValue[10];
+    int8_t startButtonValue[10] = "0\n";
     while(1) {   // Infinite loop for continuous running
         readGPIO(START_BUTTONval, startButtonValue);
         if(startButtonValue[0] == '1') {
+            (void)printf("Read Start Button\n");
             (void)pthread_mutex_lock(&lock_isStopwatchOn);
             switch (isStopwatchOn) {
                 case OFF:
@@ -297,20 +304,21 @@ static void startButton() {
             }
             (void)pthread_mutex_unlock(&lock_isStopwatchOn);
         }
-        (void)sleep(ONE_SEC_DELAY);
+        (void)usleep(TEN_MILLISEC_DELAY);
     }
 }
 
 static void resetButton() {
-    int8_t resetButtonValue[10];
+    int8_t resetButtonValue[10] = "0\n";
     while(1) {   // Infinite loop for continuous running
         readGPIO(START_BUTTONval, resetButtonValue);
         if(resetButtonValue[0] == '1') {
+            (void)printf("Read Reset Button\n");
             (void)pthread_mutex_lock(&lock_stopwatchTimer);
             stopwatchTimer = 0;
             (void)pthread_mutex_unlock(&lock_stopwatchTimer);
         }
-        (void)sleep(ONE_SEC_DELAY);
+        (void)usleep(TEN_MILLISEC_DELAY);
     }
 }
 
