@@ -29,8 +29,8 @@
 #define PIRLEDval "/sys/class/gpio/gpio67/value"
 #define LOCKBUTTONdir "/sys/class/gpio/gpio68/direction"
 #define LOCKBUTTONval "/sys/class/gpio/gpio68/value"
-#define UNLOCKBUTTONdir "/sys/class/gpio/gpio44/direction"
-#define UNLOCKBUTTONval "/sys/class/gpio/gpio44/value"
+#define UNLOCKBUTTONdir "/sys/class/gpio/gpio69/direction"
+#define UNLOCKBUTTONval "/sys/class/gpio/gpio69/value"
 
 // ON and OFF values for controlling LED light states
 #define ON 1
@@ -206,7 +206,7 @@ static void lockButton() {
     while(1){   // Infinite loop for continuous running of the wait button program
         readGPIO(LOCKBUTTONval, value);
         (void)pthread_mutex_lock(&lock_lockButtonTimer);
-        if(value[0] == '1') {
+        if(value[0] == '0') {
             lockButtonTimer++;
         } else {
             lockButtonTimer = 0;
@@ -228,7 +228,7 @@ static void unlockButton() {
     while(1){   // Infinite loop for continuous running of the wait button program
         readGPIO(UNLOCKBUTTONval, value);
         (void)pthread_mutex_lock(&lock_unlockButtonTimer);
-        if(value[0] == '1') {
+        if(value[0] == '0') {
             unlockButtonTimer++;
         } else {
             unlockButtonTimer = 0;
