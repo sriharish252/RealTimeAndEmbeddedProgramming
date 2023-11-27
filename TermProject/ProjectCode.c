@@ -23,14 +23,24 @@
 #include <pthread.h>
 
 // GPIO paths for GPIO port access
-#define PIRdir "/sys/class/gpio/gpio66/direction"
-#define PIRval "/sys/class/gpio/gpio66/value"
-#define PIRLEDdir "/sys/class/gpio/gpio67/direction"
-#define PIRLEDval "/sys/class/gpio/gpio67/value"
-#define LOCKBUTTONdir "/sys/class/gpio/gpio68/direction"
-#define LOCKBUTTONval "/sys/class/gpio/gpio68/value"
-#define UNLOCKBUTTONdir "/sys/class/gpio/gpio69/direction"
-#define UNLOCKBUTTONval "/sys/class/gpio/gpio69/value"
+#define PIRdir "/sys/class/gpio/gpio27/direction"
+#define PIRval "/sys/class/gpio/gpio27/value"
+#define PIRLEDdir "/sys/class/gpio/gpio65/direction"
+#define PIRLEDval "/sys/class/gpio/gpio65/value"
+
+#define BUTTON1dir "/sys/class/gpio/gpio66/direction"
+#define BUTTON1val "/sys/class/gpio/gpio66/value"
+#define BUTTON2dir "/sys/class/gpio/gpio67/direction"
+#define BUTTON2val "/sys/class/gpio/gpio67/value"
+#define BUTTON3dir "/sys/class/gpio/gpio68/direction"
+#define BUTTON3val "/sys/class/gpio/gpio68/value"
+#define BUTTON4dir "/sys/class/gpio/gpio69/direction"
+#define BUTTON4val "/sys/class/gpio/gpio69/value"
+#define GREENLEDdir "/sys/class/gpio/gpio46/direction"
+#define GREENLEDval "/sys/class/gpio/gpio46/value"
+#define REDLEDdir "/sys/class/gpio/gpio47/direction"
+#define REDLEDval "/sys/class/gpio/gpio47/value"
+
 
 // ON and OFF values for controlling LED light states
 #define ON 1
@@ -42,6 +52,9 @@
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
+
+#define BUFFER_SIZE 64
+
 
 // Function declarations
 int16_t initialize_gpios();
@@ -131,7 +144,7 @@ int16_t initialize_gpios(){
     (void)close((int16_t)f);
 
 
-    f=open(LOCKBUTTONdir, O_RDWR);
+    f=open(BUTTON1dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Wait Button 1 Direction");
         return ERROR_CODE;
@@ -139,12 +152,44 @@ int16_t initialize_gpios(){
     (void)write(f,"in",3);
     (void)close(f);
 
-    f=open(UNLOCKBUTTONdir, O_RDWR);
+    f=open(BUTTON2dir, O_RDWR);
     if (f < 0){
         (void)perror("Error opening Wait Button 2 Direction");
         return ERROR_CODE;
     }
     (void)write(f,"in",3);
+    (void)close(f);
+
+    f=open(BUTTON3dir, O_RDWR);
+    if (f < 0){
+        (void)perror("Error opening Wait Button 1 Direction");
+        return ERROR_CODE;
+    }
+    (void)write(f,"in",3);
+    (void)close(f);
+
+    f=open(BUTTON4dir, O_RDWR);
+    if (f < 0){
+        (void)perror("Error opening Wait Button 2 Direction");
+        return ERROR_CODE;
+    }
+    (void)write(f,"in",3);
+    (void)close(f);
+
+    f=open(GREENLEDdir, O_RDWR);
+    if (f < 0){
+        (void)perror("Error opening Wait Button 1 Direction");
+        return ERROR_CODE;
+    }
+    (void)write(f,"out",3);
+    (void)close(f);
+
+    f=open(REDLEDdir, O_RDWR);
+    if (f < 0){
+        (void)perror("Error opening Wait Button 1 Direction");
+        return ERROR_CODE;
+    }
+    (void)write(f,"out",3);
     (void)close(f);
 
     return 0;
@@ -155,7 +200,7 @@ int16_t initialize_gpios(){
 static void readGPIO(int8_t* button, int8_t* value) {
     int16_t f=0;
     f=open(button, O_RDONLY); // Open button value path in Read Only mode
-    (void)read(f, value, 6);
+    (void)read(f, value, BUFFER_SIZE);
     (void)close(f);
 }
 
@@ -202,55 +247,116 @@ static void pirSensor() {
 }
 
 static void lockButton() {
-    int8_t value[10];
-    while(1){   // Infinite loop for continuous running of the wait button program
-        readGPIO(LOCKBUTTONval, value);
-        (void)pthread_mutex_lock(&lock_lockButtonTimer);
-        if(value[0] == '0') {
-            lockButtonTimer++;
-        } else {
-            lockButtonTimer = 0;
+    
+    int patternUnlock[] = {1, 3, 4, 2};
+    int patternIndex = 0;
+
+    int lastButton1State = 0;
+    int lastButton2State = 0;
+    int lastButton3State = 0;
+    int lastButton4State = 0;
+
+    time_t start_time, end_time;
+
+    char button1StateVal[BUFFER_SIZE];
+    char button2StateVal[BUFFER_SIZE];
+    char button3StateVal[BUFFER_SIZE];
+    char button4StateVal[BUFFER_SIZE];
+
+    while (1) {
+
+        readGPIO(BUTTON1val, button1StateVal);
+        readGPIO(BUTTON2val, button2StateVal);
+        readGPIO(BUTTON3val, button3StateVal);
+        readGPIO(BUTTON4val, button4StateVal);
+
+        int button1State = atoi(button1StateVal);
+        int button2State = atoi(button2StateVal);
+        int button3State = atoi(button3StateVal);
+        int button4State = atoi(button4StateVal);
+
+        if (button1State && !lastButton1State) {
+            printf("Button 1 pressed\n");
+            start_time = time(NULL);
+            if (patternUnlock[patternIndex] == 1) {
+                patternIndex++;
+            } else {
+                patternIndex = 0;
+            }
+        } else if (!button1State && lastButton1State) {
+            end_time = time(NULL);
+            if (difftime(end_time, start_time) >= 5) {
+                writeGPIO(REDLEDval, ON);
+                writeGPIO(GREENLEDval, OFF);
+                printf("Locked\n");
+            }
+        } else if (button2State && !lastButton2State) {
+            printf("Button 2 pressed\n");
+            if (patternUnlock[patternIndex] == 2) {
+                patternIndex++;
+            } else {
+                patternIndex = 0;
+            }
+        } else if (button3State && !lastButton3State) {
+            printf("Button 3 pressed\n");
+            if (patternUnlock[patternIndex] == 3) {
+                patternIndex++;
+            } else {
+                patternIndex = 0;
+            }
+        } else if (button4State && !lastButton4State) {
+            printf("Button 4 pressed\n");
+            if (patternUnlock[patternIndex] == 4) {
+                patternIndex++;
+            } else {
+                patternIndex = 0;
+            }
         }
-        
-        // Reset the WaitButton after 8 seconds to avoid false triggers
-        if(lockButtonTimer >= 8) {
-            isLocked = 1;
-            printf("LOCKED!\n");
-            lockButtonTimer = 0;
+
+        if (patternIndex == 4) {
+            writeGPIO(GREENLEDval, ON);
+            writeGPIO(REDLEDval, OFF);
+            printf("Unlocked\n");
+            patternIndex = 0;
         }
-        (void)pthread_mutex_unlock(&lock_lockButtonTimer);
-        (void)sleep(ONE_SEC_DELAY); //Set to 1 second to update the button every second
+
+        lastButton1State = button1State;
+        lastButton2State = button2State;
+        lastButton3State = button3State;
+        lastButton4State = button4State;
+
+        usleep(1000000); // delay for debounce
     }
 }
 
 static void unlockButton() {
     int8_t value[10];
-    while(1){   // Infinite loop for continuous running of the wait button program
-        readGPIO(UNLOCKBUTTONval, value);
-        (void)pthread_mutex_lock(&lock_unlockButtonTimer);
-        if(value[0] == '0') {
-            unlockButtonTimer++;
-        } else {
-            unlockButtonTimer = 0;
-        }
+    // while(1){   // Infinite loop for continuous running of the wait button program
+        // readGPIO(UNLOCKBUTTONval, value);
+        // (void)pthread_mutex_lock(&lock_unlockButtonTimer);
+        // if(value[0] == '0') {
+        //     unlockButtonTimer++;
+        // } else {
+        //     unlockButtonTimer = 0;
+        // }
         
-        // Reset the WaitButton after 8 seconds to avoid false triggers
-        if(unlockButtonTimer >= 8) {
-            isLocked = 0;
-            printf("UNLOCKED!\n");
-            unlockButtonTimer = 0;
-        }
-        (void)pthread_mutex_unlock(&lock_unlockButtonTimer);
-        (void)sleep(ONE_SEC_DELAY); //Set to 1 second to update the button every second
-    }
+        // // Reset the WaitButton after 8 seconds to avoid false triggers
+        // if(unlockButtonTimer >= 8) {
+        //     isLocked = 0;
+        //     printf("UNLOCKED!\n");
+        //     unlockButtonTimer = 0;
+        // }
+        // (void)pthread_mutex_unlock(&lock_unlockButtonTimer);
+        // (void)sleep(ONE_SEC_DELAY); //Set to 1 second to update the button every second
+    // }
 }
 
 static void triggerAlarm(int8_t alert[20]) {
     printf("\n%s alert triggered\n", alert);
-    writeGPIO(PIRLEDval, 1);
+    writeGPIO(PIRLEDval, ON);
     sleep(10);
 
-    writeGPIO(PIRLEDval, 0);
+    writeGPIO(PIRLEDval, OFF);
 }
 
 
