@@ -41,6 +41,8 @@
 #define REDLEDdir "/sys/class/gpio/gpio47/direction"
 #define REDLEDval "/sys/class/gpio/gpio47/value"
 
+#define WATERSENSOR "/sys/bus/iio/devices/iio:device0/in_voltage2_raw"
+
 
 // ON and OFF values for controlling LED light states
 #define ON 1
@@ -63,21 +65,16 @@ static void writeGPIO(int8_t* light, int16_t value);
 static void readPIRSensor(int8_t* value);
 static void pirSensor();
 static void lockButton();
-static void unlockButton();
+static void waterSensor();
 static void triggerAlarm(int8_t alert[20]);
 
 static void *startRoutine_pirSensor();
 static void *startRoutine_lockButton();
-static void *startRoutine_unlockButton();
+static void *startRoutine_waterSensor();
 
 
 // Global Variables
-int16_t lockButtonTimer = 0;
-int16_t unlockButtonTimer = 0;
-int16_t checkRFIDUser = 0;
 int16_t isLocked = 0;
-
-static pthread_mutex_t lock_lockButtonTimer, lock_unlockButtonTimer;
 
 
 int main(void)
@@ -109,12 +106,12 @@ int main(void)
 
     pthread_t t_pirSensor;
     pthread_t t_lockButton;
-    pthread_t t_unlockButton;
+    pthread_t t_waterSensor;
 
     // Create Threads for Traffic Signals and their corresponding WaitButtons
     (void)pthread_create(&t_pirSensor, NULL, startRoutine_pirSensor, NULL);
     (void)pthread_create(&t_lockButton, NULL, startRoutine_lockButton, NULL);
-    (void)pthread_create(&t_unlockButton, NULL, startRoutine_unlockButton, NULL);
+    (void)pthread_create(&t_waterSensor, NULL, startRoutine_waterSensor, NULL);
 
     pthread_exit(NULL); // Waits for the child threads to exit
     
@@ -232,10 +229,10 @@ static void pirSensor() {
     while (1) {
         readPIRSensor(value);
         
-        printf("PIR Sensor Value: %s\n", value); // Assuming the value is a character
+        // printf("PIR Sensor Value: %s\n", value); // Assuming the value is a character
 
         if(value[0] == '1') {
-            printf("Motion Detected!\n");
+            // printf("Motion Detected!\n");
             if(isLocked == 1) {
                 triggerAlarm("INTRUDER");
             }
@@ -289,6 +286,7 @@ static void lockButton() {
                 writeGPIO(REDLEDval, ON);
                 writeGPIO(GREENLEDval, OFF);
                 printf("Locked\n");
+                isLocked = ON;
             }
         } else if (button2State && !lastButton2State) {
             printf("Button 2 pressed\n");
@@ -317,6 +315,7 @@ static void lockButton() {
             writeGPIO(GREENLEDval, ON);
             writeGPIO(REDLEDval, OFF);
             printf("Unlocked\n");
+            isLocked = OFF;
             patternIndex = 0;
         }
 
@@ -329,26 +328,29 @@ static void lockButton() {
     }
 }
 
-static void unlockButton() {
-    int8_t value[10];
-    // while(1){   // Infinite loop for continuous running of the wait button program
-        // readGPIO(UNLOCKBUTTONval, value);
-        // (void)pthread_mutex_lock(&lock_unlockButtonTimer);
-        // if(value[0] == '0') {
-        //     unlockButtonTimer++;
-        // } else {
-        //     unlockButtonTimer = 0;
-        // }
-        
-        // // Reset the WaitButton after 8 seconds to avoid false triggers
-        // if(unlockButtonTimer >= 8) {
-        //     isLocked = 0;
-        //     printf("UNLOCKED!\n");
-        //     unlockButtonTimer = 0;
-        // }
-        // (void)pthread_mutex_unlock(&lock_unlockButtonTimer);
-        // (void)sleep(ONE_SEC_DELAY); //Set to 1 second to update the button every second
-    // }
+static void waterSensor() {
+    int signal_fd;
+    char buffer[4];
+    int value = 0;
+    // Configure the signal pin for analog reading
+    signal_fd = open(WATERSENSOR, O_RDONLY);
+
+    while (1) {
+        // Read the analog value from the sensor
+        lseek(signal_fd, 0, SEEK_SET);
+        read(signal_fd, buffer, sizeof(buffer));
+        value = atoi(buffer);
+
+        // printf("Sensor value: %d\n", value);
+
+        if(value >= 200) {
+            // printf("Water Leakage Detected!\n");
+            triggerAlarm("WATER LEAKAGE");
+
+        }
+
+        (void)sleep(ONE_SEC_DELAY);
+    }
 }
 
 static void triggerAlarm(int8_t alert[20]) {
@@ -368,6 +370,6 @@ static void *startRoutine_lockButton() {
     lockButton();
 }
 
-static void *startRoutine_unlockButton() {
-    unlockButton();
+static void *startRoutine_waterSensor() {
+    waterSensor();
 }
