@@ -1,5 +1,6 @@
 //
-// Simulate a PIR Sensor
+// Term Project
+// Smart Home Security System
 //
 // SWE 660 - Fall 2023
 // Project Group 6
@@ -25,8 +26,8 @@
 // GPIO paths for GPIO port access
 #define PIRdir "/sys/class/gpio/gpio27/direction"
 #define PIRval "/sys/class/gpio/gpio27/value"
-#define PIRLEDdir "/sys/class/gpio/gpio65/direction"
-#define PIRLEDval "/sys/class/gpio/gpio65/value"
+#define ALARMdir "/sys/class/gpio/gpio65/direction"
+#define ALARMval "/sys/class/gpio/gpio65/value"
 
 #define BUTTON1dir "/sys/class/gpio/gpio66/direction"
 #define BUTTON1val "/sys/class/gpio/gpio66/value"
@@ -49,13 +50,12 @@
 #define OFF 0
 
 // Time delays for delaying the next signal
-#define FIVE_SEC_DELAY 5 //5 second delay
-#define ONE_SEC_DELAY 1 //5 second delay
+#define ONE_SEC_DELAY 1 //1 second delay
 
 #define GPIO_PATH_LEN 40 // GPIO port access path length
 #define ERROR_CODE (-1) // Set the default error code
 
-#define BUFFER_SIZE 64
+#define BUFFER_SIZE 64  // Buffer size to read data from file
 
 
 // Function declarations
@@ -74,7 +74,7 @@ static void *startRoutine_waterSensor();
 
 
 // Global Variables
-int16_t isLocked = 0;
+int16_t isLocked = OFF;   // Variable to keep track of the System's current security state
 
 
 int main(void)
@@ -87,7 +87,7 @@ int main(void)
         return ERROR_CODE; // Exit with an error code
     }
 
-    // Print system information and project group
+    // Print system information and project group information
     (void)printf("\nSystem name: %s\n", sysInfo.sysname);
     (void)printf("Node name: %s\n", sysInfo.nodename);
     (void)printf("Machine: %s\n", sysInfo.machine);
@@ -108,14 +108,13 @@ int main(void)
     pthread_t t_lockButton;
     pthread_t t_waterSensor;
 
-    // Create Threads for Traffic Signals and their corresponding WaitButtons
+    // Create Threads for the three functionalities
     (void)pthread_create(&t_pirSensor, NULL, startRoutine_pirSensor, NULL);
     (void)pthread_create(&t_lockButton, NULL, startRoutine_lockButton, NULL);
     (void)pthread_create(&t_waterSensor, NULL, startRoutine_waterSensor, NULL);
 
     pthread_exit(NULL); // Waits for the child threads to exit
     
-
 }
 
 // Connecting to the GPIO ports through GPIO SysFS directory
@@ -132,7 +131,7 @@ int16_t initialize_gpios(){
     (void)close((int16_t)f);
 
     // Open the PIR alert LED GPIO path in ReadWrite mode
-    f=open(PIRLEDdir, O_RDWR);
+    f=open(ALARMdir, O_RDWR);
     if (f <= ERROR_CODE){     // If opening file fails, we get -1 as the return value, leading to us throwing an error upstream
         (void)perror("Error opening Red Direction");
         return ERROR_CODE;
@@ -192,7 +191,6 @@ int16_t initialize_gpios(){
     return 0;
 }
 
-
 // For reading an input from the GPIO port
 static void readGPIO(int8_t* button, int8_t* value) {
     int16_t f=0;
@@ -209,6 +207,7 @@ static void writeGPIO(int8_t* light, int16_t value) {
     (void)close(f);
 }
 
+// For reading PIR sensor input from the GPIO port
 static void readPIRSensor(int8_t* value) {
     int16_t f = 0;
     f = open(PIRval, O_RDONLY); // Open PIR sensor value path in Read Only mode
@@ -224,44 +223,37 @@ static void readPIRSensor(int8_t* value) {
     (void)close(f);
 }
 
+// PIR sensor logic implementation
 static void pirSensor() {
     int8_t value[10];
     while (1) {
         readPIRSensor(value);
-        
-        // printf("PIR Sensor Value: %s\n", value); // Assuming the value is a character
-
         if(value[0] == '1') {
-            // printf("Motion Detected!\n");
             if(isLocked == 1) {
                 triggerAlarm("INTRUDER");
             }
-
         }
-
-        sleep(ONE_SEC_DELAY);
+        sleep(ONE_SEC_DELAY); // delay for debounce
     }
 }
 
+// Lock Buttons Logic implementation
 static void lockButton() {
-    
-    int patternUnlock[] = {1, 3, 4, 2};
+    int patternUnlock[] = {1, 3, 4, 2}; // The keycode to unlock the doors, aka set the security state to unlocked mode
     int patternIndex = 0;
-
-    int lastButton1State = 0;
+    int lastButton1State = 0;   // To store each button's previous state value
     int lastButton2State = 0;
     int lastButton3State = 0;
     int lastButton4State = 0;
 
     time_t start_time, end_time;
 
-    char button1StateVal[BUFFER_SIZE];
+    char button1StateVal[BUFFER_SIZE];  // To store each button's state value
     char button2StateVal[BUFFER_SIZE];
     char button3StateVal[BUFFER_SIZE];
     char button4StateVal[BUFFER_SIZE];
 
     while (1) {
-
         readGPIO(BUTTON1val, button1StateVal);
         readGPIO(BUTTON2val, button2StateVal);
         readGPIO(BUTTON3val, button3StateVal);
@@ -272,23 +264,23 @@ static void lockButton() {
         int button3State = atoi(button3StateVal);
         int button4State = atoi(button4StateVal);
 
-        if (button1State && !lastButton1State) {
+        if (button1State && !lastButton1State) {    // if button1 is pressed
             printf("Button 1 pressed\n");
             start_time = time(NULL);
-            if (patternUnlock[patternIndex] == 1) {
+            if (patternUnlock[patternIndex] == 1) { // if unlock pattern matches, move forward
                 patternIndex++;
-            } else {
+            } else {        // else reset the pattern to start from the beginning
                 patternIndex = 0;
             }
         } else if (!button1State && lastButton1State) {
             end_time = time(NULL);
-            if (difftime(end_time, start_time) >= 5) {
+            if (difftime(end_time, start_time) >= 5) {  // if button1 is held pressed for 5 or more seconds, Lock the system
                 writeGPIO(REDLEDval, ON);
                 writeGPIO(GREENLEDval, OFF);
                 printf("Locked\n");
                 isLocked = ON;
             }
-        } else if (button2State && !lastButton2State) {
+        } else if (button2State && !lastButton2State) { // Similar to button1 functionality, except for the locking part
             printf("Button 2 pressed\n");
             if (patternUnlock[patternIndex] == 2) {
                 patternIndex++;
@@ -311,7 +303,7 @@ static void lockButton() {
             }
         }
 
-        if (patternIndex == 4) {
+        if (patternIndex == 4) {    // if whole pattern is matched, unlock the system
             writeGPIO(GREENLEDval, ON);
             writeGPIO(REDLEDval, OFF);
             printf("Unlocked\n");
@@ -328,6 +320,7 @@ static void lockButton() {
     }
 }
 
+// Water Sensor thread logic implementation
 static void waterSensor() {
     int signal_fd;
     char buffer[4];
@@ -341,26 +334,21 @@ static void waterSensor() {
         read(signal_fd, buffer, sizeof(buffer));
         value = atoi(buffer);
 
-        // printf("Sensor value: %d\n", value);
-
-        if(value >= 200) {
-            // printf("Water Leakage Detected!\n");
-            triggerAlarm("WATER LEAKAGE");
-
+        if(value >= 200) {  // 200 value corresponds to ~1mm water depth in our testing
+            triggerAlarm("WATER LEAKAGE");  // Water Leakage Detected
         }
-
-        (void)sleep(ONE_SEC_DELAY);
+        (void)sleep(ONE_SEC_DELAY); // delay for debounce
     }
 }
 
+// Alarm logic implementation
 static void triggerAlarm(int8_t alert[20]) {
-    printf("\n%s alert triggered\n", alert);
-    writeGPIO(PIRLEDval, ON);
+    printf("\n%s alert triggered\n", alert);    // Print the alarm type in console
+    writeGPIO(ALARMval, ON);
     sleep(10);
 
-    writeGPIO(PIRLEDval, OFF);
+    writeGPIO(ALARMval, OFF);
 }
-
 
 static void *startRoutine_pirSensor() {
     pirSensor();
